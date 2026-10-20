@@ -51,6 +51,8 @@
     addRowBtn.hidden = !showCollectionControls;
     driveSyncBtn.hidden = !showCollectionControls;
     if(refreshChecklistBtn) refreshChecklistBtn.hidden = !showCollectionControls;
+    // 범위 선택은 동기화 버튼 전용이라 버튼이 숨으면 같이 숨겨요.
+    if(updateRangeInput) updateRangeInput.hidden = !showCollectionControls;
     if(changeLogBtn) changeLogBtn.hidden = !admin;
     if(navSettingsBtn) navSettingsBtn.hidden = !admin;
     if(navUsersBtn) navUsersBtn.hidden = !admin;

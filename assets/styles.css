@@ -287,6 +287,7 @@
   .settings-actions input,
   #search-input,
   .toolbar-filters select,
+  #update-range-input,
   .login-input,
   #upload-company-input {
     height: 38px;
@@ -756,7 +757,7 @@
   .toolbar-search { flex: 1 1 220px; min-width: 180px; }
   .toolbar-filters { display: flex; flex-wrap: wrap; gap: 8px; }
   #search-input { width: 100%; }
-  .toolbar-filters select { min-width: 120px; }
+  .toolbar-filters select, #update-range-input { min-width: 120px; }
 
   .btn {
     height: 38px;
