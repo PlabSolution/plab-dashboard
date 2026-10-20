@@ -35,7 +35,7 @@
       <button class="nav-item" type="button" id="nav-upload"><span class="icon"></span>자료 제출</button>
     </div>
 
-    <div class="nav-group">
+    <div class="nav-group" id="admin-nav-group">
       <div class="sidebar-title">관리</div>
       <button class="nav-item" type="button" id="nav-users"><span class="icon"></span>사용자 권한</button>
       <button class="nav-item" type="button" id="nav-settings"><span class="icon"></span>설정</button>
@@ -46,7 +46,7 @@
       <nav class="region-nav" id="region-nav" aria-label="권역별 바로가기"></nav>
     </div>
 
-    <div class="nav-group" style="margin-top: 14px;">
+    <div class="nav-group" style="margin-top: 18px;">
       <div class="sidebar-title">Step</div>
       <nav class="region-nav" id="round-nav" aria-label="회차별 바로가기"></nav>
     </div>
@@ -171,6 +171,7 @@
         <option value="issue">문제</option>
       </select>
     </div>
+    <div class="toolbar-actions">
     <select id="update-range-input" aria-label="업데이트 범위" title="드라이브 불러오기·취합현황 업데이트를 할 폴더NC 범위">
       <option value="all">전체 범위</option>
     </select>
@@ -178,6 +179,7 @@
     <button class="btn btn-ghost" id="refresh-checklist-btn" type="button">🔄 취합현황 업데이트</button>
     <button class="btn btn-ghost" id="export-excel-btn" type="button" hidden>📊 엑셀로 내보내기</button>
     <button class="btn btn-ghost" id="change-log-btn" type="button" hidden>📜 변경 이력</button>
+    </div>
   </section>
 
   <section class="settings-card" id="change-log-banner" hidden>

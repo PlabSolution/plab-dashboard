@@ -46,11 +46,11 @@
   }
 
   .sidebar {
-    width: 250px;
+    width: 224px;
     flex: none;
     background: var(--sidebar);
     color: #f8fbff;
-    padding: 22px 18px;
+    padding: 22px 14px;
     border-right: 1px solid rgba(148, 163, 184, 0.18);
     position: sticky;
     top: 0;
@@ -144,13 +144,13 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 11px 12px;
-    border-radius: 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
     border: 1px solid transparent;
     background: transparent;
     color: #dfeaf8;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 600;
     text-align: left;
     cursor: pointer;
@@ -182,6 +182,9 @@
   .page {
     flex: 1;
     min-width: 0;
+    /* 아주 넓은 모니터에서 표·카드가 끝까지 늘어지지 않게 가운데로 모아요 */
+    max-width: 1600px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -396,7 +399,7 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 18px;
   }
@@ -735,14 +738,14 @@
   .col-date { width: 108px; }
   .col-folder { width: 88px; }
   .col-region { width: 92px; }
-  .col-company { width: 190px; }
+  .col-company { width: 220px; }
   .col-session { width: 62px; }
   .col-doc { width: 92px; }
   .col-progress { width: 130px; }
   .col-complete { width: 66px; }
   .col-flag { width: 84px; }
   .col-remark { min-width: 170px; }
-  .col-email { width: 200px; }
+  .col-email { width: 200px; min-width: 200px; }
   .col-drive-link { width: 60px; }
   .col-actions { width: 56px; }
 
@@ -754,7 +757,9 @@
     margin-top: 2px;
   }
 
-  .toolbar-search { flex: 1 1 220px; min-width: 180px; }
+  .toolbar-search { flex: 1 1 220px; min-width: 180px; max-width: 420px; }
+  /* 관리 버튼 묶음은 오른쪽으로 — 줄이 넘치면 다음 줄 오른쪽에 붙어요 */
+  .toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
   .toolbar-filters { display: flex; flex-wrap: wrap; gap: 8px; }
   #search-input { width: 100%; }
   .toolbar-filters select, #update-range-input { min-width: 120px; }
@@ -925,7 +930,9 @@
   @media (max-width: 900px) {
     .layout { flex-direction: column; min-height: 0; }
     .sidebar { width: 100%; position: static; height: auto; overflow-y: visible; }
-    .page { padding: 20px 16px 48px; }
+    .page { padding: 20px 16px 48px; max-width: none; }
+    .toolbar-search { max-width: none; }
+    .toolbar-actions { margin-left: 0; }
     .region-nav { flex-direction: row; flex-wrap: wrap; }
     .region-nav-item { width: auto; }
     .topbar { display: block; }

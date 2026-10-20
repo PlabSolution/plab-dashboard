@@ -56,6 +56,9 @@
     if(changeLogBtn) changeLogBtn.hidden = !admin;
     if(navSettingsBtn) navSettingsBtn.hidden = !admin;
     if(navUsersBtn) navUsersBtn.hidden = !admin;
+    // 열람 계정에선 "관리" 제목만 덩그러니 남지 않게 그룹째 숨겨요.
+    var adminNavGroup = document.getElementById('admin-nav-group');
+    if(adminNavGroup) adminNavGroup.hidden = !admin;
     if(navProgramBtn) navProgramBtn.hidden = !admin;
     // 권역 공유 계정이 아직 기업을 안 골랐으면(uploadGated), 엑셀 내보내기도 잠가둬요.
     // 안 그러면 고르기 전 상태에서 눌러서 권역 전체 데이터가 그대로 새어나갈 수 있어요.
