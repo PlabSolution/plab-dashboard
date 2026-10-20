@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>멘토링 트래커</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;800;900&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div class="login-screen" id="login-screen" hidden>
+  <form class="login-card" id="login-form">
+    <h2>멘토링 트래커 로그인</h2>
+    <p class="login-sub">전달받은 아이디와 비밀번호를 입력해 주세요.</p>
+    <input class="login-input" id="login-username" type="text" placeholder="아이디" autocomplete="username" autocapitalize="off" autocorrect="off">
+    <input class="login-input" id="login-password" type="password" placeholder="비밀번호" autocomplete="current-password">
+    <button class="btn btn-primary login-submit" id="login-submit" type="submit">로그인</button>
+    <p class="login-error" id="login-error" hidden></p>
+  </form>
+</div>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">PLAB</div>
+
+    <div class="nav-group">
+      <div class="sidebar-title">운영</div>
+      <button class="nav-item active" type="button" id="nav-dashboard"><span class="icon"></span>대시보드</button>
+      <button class="nav-item" type="button" id="nav-program"><span class="icon"></span>프로그램</button>
+      <button class="nav-item" type="button" id="nav-collect"><span class="icon"></span>취합현황</button>
+    </div>
+
+    <div class="nav-group">
+      <div class="sidebar-title">리포트</div>
+      <button class="nav-item" type="button" id="nav-report"><span class="icon"></span>보고서</button>
+      <button class="nav-item" type="button" id="nav-upload"><span class="icon"></span>자료 제출</button>
+    </div>
+
+    <div class="nav-group">
+      <div class="sidebar-title">관리</div>
+      <button class="nav-item" type="button" id="nav-users"><span class="icon"></span>사용자 권한</button>
+      <button class="nav-item" type="button" id="nav-settings"><span class="icon"></span>설정</button>
+    </div>
+
+    <div id="region-sidebar-section">
+      <div class="sidebar-title">권역</div>
+      <nav class="region-nav" id="region-nav" aria-label="권역별 바로가기"></nav>
+    </div>
+
+    <div class="nav-group" style="margin-top: 14px;">
+      <div class="sidebar-title">Step</div>
+      <nav class="region-nav" id="round-nav" aria-label="회차별 바로가기"></nav>
+    </div>
+    <div id="step-message" class="subtitle" style="display:none; margin-top:8px; font-weight:700; color:var(--primary-strong);"></div>
+  </aside>
+  <div class="page" id="app">
+  <header class="topbar">
+    <div class="topbar-main">
+      <h1>멘토링 트래커</h1>
+    </div>
+    <div class="topbar-status">
+      <span class="role-badge" id="role-badge" hidden></span>
+      <span class="save-dot" id="save-dot"></span>
+      <span id="save-text">불러오는 중…</span>
+      <button class="refresh-btn" id="refresh-btn" type="button">↻ 새로고침</button>
+      <button class="refresh-btn" id="logout-btn" type="button" hidden>로그아웃</button>
+    </div>
+  </header>
+
+  <div id="dashboard-view">
+  <section class="stats-grid" id="stats-grid" aria-label="요약 통계"></section>
+
+  <section class="main-grid" id="quick-panels" aria-label="처리 필요 항목"></section>
+  </div>
+
+  <section id="report-view" hidden aria-label="보고서">
+    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">보고서</h2>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">회차별 비교</h3>
+      </div>
+      <div class="table-wrap" style="max-height:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>회차</th><th>기업 수</th><th>완료율</th><th>회차 진행률</th>
+              <th>수행계획서</th><th>결과보고서</th><th>문제</th><th>경고</th><th>주의</th>
+            </tr>
+          </thead>
+          <tbody id="round-comparison-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">권역별 비교</h3>
+      </div>
+      <div class="table-wrap" style="max-height:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>권역</th><th>기업 수</th><th>완료율</th><th>회차 진행률</th>
+              <th>수행계획서</th><th>결과보고서</th><th>문제</th><th>경고</th><th>주의</th>
+            </tr>
+          </thead>
+          <tbody id="region-comparison-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <button class="btn btn-ghost" id="export-report-btn" type="button">📊 엑셀로 내보내기</button>
+  </section>
+
+  <section id="program-view" hidden aria-label="프로그램">
+    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">프로그램</h2>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">회차 관리</h3>
+      </div>
+      <ul class="side-list" id="rounds-list"></ul>
+    </section>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">+ 회차 추가</h3>
+      </div>
+      <div class="settings-actions" style="align-items:flex-end; flex-wrap:wrap;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">회차 이름
+          <input class="compose-input" id="new-round-name-input" type="text" placeholder="예: 3회차" style="height:38px; width:120px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">시작일
+          <input class="compose-input" id="new-round-start-input" type="date" style="height:38px; width:150px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">종료일
+          <input class="compose-input" id="new-round-end-input" type="date" style="height:38px; width:150px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">상태
+          <select class="compose-input" id="new-round-status-input" style="height:38px; width:100px;">
+            <option value="recruiting">모집중</option>
+            <option value="ongoing">진행중</option>
+            <option value="closed">종료</option>
+          </select>
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">드라이브 폴더 ID
+          <input class="compose-input" id="new-round-drive-folder-input" type="text" placeholder="이 회차 전용 폴더 ID" style="height:38px; width:220px;">
+        </label>
+        <button id="add-round-btn" class="btn btn-primary" type="button">추가</button>
+      </div>
+    </section>
+
+  </section>
+
+  <div id="table-view" hidden>
+  <section class="toolbar">
+    <div class="toolbar-search">
+      <input id="search-input" type="text" placeholder="기업명으로 검색" autocomplete="off">
+    </div>
+    <div class="toolbar-filters">
+      <select id="filter-status" aria-label="완료 상태 필터">
+        <option value="all">전체 상태</option>
+        <option value="done">완료</option>
+        <option value="pending">미완료</option>
+      </select>
+      <select id="filter-flag" aria-label="이슈 필터">
+        <option value="all">전체 이슈</option>
+        <option value="none">정상</option>
+        <option value="caution">주의</option>
+        <option value="alert">경고</option>
+        <option value="issue">문제</option>
+      </select>
+    </div>
+    <select id="update-range-input" aria-label="업데이트 범위" style="height:36px;">
+      <option value="all">전체 범위</option>
+    </select>
+    <button class="btn btn-ghost" id="drive-sync-btn" type="button">📁 드라이브에서 불러오기</button>
+    <button class="btn btn-ghost" id="refresh-checklist-btn" type="button">🔄 취합현황 업데이트</button>
+    <button class="btn btn-ghost" id="export-excel-btn" type="button" hidden>📊 엑셀로 내보내기</button>
+    <button class="btn btn-ghost" id="change-log-btn" type="button" hidden>📜 변경 이력</button>
+  </section>
+
+  <section class="settings-card" id="change-log-banner" hidden>
+    <div class="settings-header">
+      <h3 class="settings-title">변경 이력</h3>
+      <span class="settings-badge">관리자</span>
+    </div>
+    <p class="subtitle" style="margin:0 0 12px;">최근 200건까지 최신순으로 보여줘요. 누가·언제·무엇을 바꿨는지 확인할 수 있어요.</p>
+    <div class="table-wrap" style="max-height:340px;">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-date">시간</th>
+            <th class="col-region">사용자</th>
+            <th class="col-doc">작업</th>
+            <th class="col-company">기업명</th>
+            <th class="col-remark">내용</th>
+          </tr>
+        </thead>
+        <tbody id="change-log-body"><tr class="empty-row"><td colspan="5">불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="settings-actions">
+      <button id="change-log-refresh-btn" class="btn btn-ghost" type="button">새로고침</button>
+      <button id="change-log-close-btn" class="btn btn-ghost" type="button">닫기</button>
+    </div>
+  </section>
+
+  <p class="subtitle" id="upload-company-banner" style="margin:-8px 0 0;" hidden></p>
+
+  <section class="table-card" id="upload-company-gate" hidden>
+    <div style="padding:22px; display:flex; flex-direction:column; gap:10px; align-items:flex-start;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="upload-company-input" list="upload-company-list" type="text" placeholder="기업명 검색" style="min-width:240px;">
+        <button id="upload-company-confirm-btn" class="btn btn-primary" type="button">확인</button>
+      </div>
+      <p class="subtitle" id="upload-company-error" style="margin:0; color:#b3432f;" hidden></p>
+    </div>
+  </section>
+  <datalist id="upload-company-list"></datalist>
+
+  <section class="table-card" id="table-card-main">
+    <div class="table-wrap">
+      <table id="main-table">
+        <thead id="table-head"></thead>
+        <tbody id="rows-body"></tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span id="row-count-label"></span>
+      <button class="btn btn-primary" id="add-row-btn" type="button">+ 멘티기업 추가</button>
+    </div>
+  </section>
+  </div>
+
+
+
+  <section id="settings-view" hidden aria-label="설정">
+    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">설정</h2>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">회차 세션 수 설정</h3>
+        <span class="settings-badge">관리자</span>
+      </div>
+      <div class="settings-actions">
+        <input id="session-count-input" type="number" min="1" step="1">
+        <button id="session-count-save-btn" class="btn btn-primary" type="button">저장</button>
+      </div>
+    </section>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">지연 기준일 설정</h3>
+        <span class="settings-badge">관리자</span>
+      </div>
+      <div class="settings-actions" style="align-items:flex-end;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">주의(일)
+          <input id="flag-caution-input" type="number" min="1" step="1" style="width:80px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">경고(일)
+          <input id="flag-alert-input" type="number" min="1" step="1" style="width:80px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">문제(일)
+          <input id="flag-issue-input" type="number" min="1" step="1" style="width:80px;">
+        </label>
+        <button id="flag-thresholds-save-btn" class="btn btn-primary" type="button">저장</button>
+      </div>
+    </section>
+
+
+  </section>
+
+
+  <section id="users-view" hidden aria-label="사용자 권한">
+    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">사용자 권한</h2>
+
+    <section class="settings-card" style="margin-bottom:18px;">
+      <div class="settings-header">
+        <h3 class="settings-title">계정 목록</h3>
+      </div>
+      <ul class="side-list" id="users-list"></ul>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-header">
+        <h3 class="settings-title">+ 계정 추가</h3>
+      </div>
+      <div class="settings-actions" style="align-items:flex-end; flex-wrap:wrap;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">아이디
+          <input class="compose-input" id="new-user-username-input" type="text" style="height:38px; width:150px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">초기 비밀번호
+          <input class="compose-input" id="new-user-password-input" type="text" style="height:38px; width:150px;">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">권한
+          <select class="compose-input" id="new-user-role-input" style="height:38px; width:100px;">
+            <option value="viewer">열람</option>
+            <option value="admin">관리자</option>
+          </select>
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">담당 권역
+          <select class="compose-input" id="new-user-region-input" style="height:38px; width:120px;"></select>
+        </label>
+        <button id="add-user-btn" class="btn btn-primary" type="button">추가</button>
+      </div>
+    </section>
+  </section>
+  </div>
+</div>
+
+<datalist id="region-list"></datalist>
+
+<script src="assets/js/state.js"></script>
+<script src="assets/js/table-view.js"></script>
+<script src="assets/js/dashboard-sessions-nav.js"></script>
+<script src="assets/js/admin-pages.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/events-init.js"></script>
+</body>
+</html>
