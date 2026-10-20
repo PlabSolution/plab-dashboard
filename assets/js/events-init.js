@@ -14,7 +14,91 @@
       renderTable();
       renderRowCountLabel();
     }
+    renderNamingIssues();
     if(currentPage === 'report') renderReportView();
+  }
+
+  // ── 드라이브 이름 확인 카드 ──────────────────────────────────────────
+  // 동기화·업데이트 때 서버가 모아둔 "규칙에 안 맞는 폴더·파일"을 관리자에게 보여줘요.
+  // 이름이 틀려서 조용히 누락되던 걸 "고칠 목록"으로 바꾸는 게 목적이에요.
+  var namingExpanded = false;
+
+  function namingIssueTotal(ni){
+    return ni ? ((ni.folderCount || 0) + (ni.fileCount || 0)) : 0;
+  }
+
+  function formatNamingTime(iso){
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return '';
+    return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  function renderNamingIssues(){
+    var card = document.getElementById('naming-issues-card');
+    if(!card) return;
+    var ni = STATE.namingIssues;
+    var show = isAdmin() && currentPage === 'collect' && namingIssueTotal(ni) > 0;
+    card.hidden = !show;
+    if(!show) return;
+
+    var summary = document.getElementById('naming-issues-summary');
+    var parts = [];
+    if(ni.folderCount) parts.push('폴더 ' + ni.folderCount + '개');
+    if(ni.fileCount) parts.push('파일 ' + ni.fileCount + '개');
+    summary.textContent = parts.join(' · ') + ' — ' + (ni.kind === 'refresh' ? '취합현황 업데이트' : '드라이브 불러오기') +
+      ' 기준' + (ni.scope ? '(' + ni.scope + ')' : '') + (ni.at ? ', ' + formatNamingTime(ni.at) : '');
+
+    var toggle = document.getElementById('naming-issues-toggle');
+    var body = document.getElementById('naming-issues-body');
+    toggle.textContent = namingExpanded ? '접기' : '자세히 보기';
+    body.hidden = !namingExpanded;
+    if(!namingExpanded) return;
+
+    var rules = STATE.namingRules || {};
+    var html = '<div class="naming-rules">' +
+      '<div><strong>기업 폴더 이름</strong> <code>' + escapeHtml(rules.folder || '번호_권역_기업명') + '</code></div>' +
+      '<div><strong>파일 이름</strong> ' + escapeHtml(rules.files || '') + '</div>' +
+      '<div style="color:var(--muted);">드라이브에서 이름을 고친 뒤 "드라이브에서 불러오기"(폴더) 또는 "취합현황 업데이트"(파일)를 다시 누르면 목록이 갱신돼요.</div>' +
+      '</div>';
+
+    var folders = ni.folders || [];
+    if(ni.folderCount){
+      html += '<div class="naming-section"><h4>기업으로 인식 안 된 폴더 ' + ni.folderCount + '개</h4>' +
+        '<p class="naming-hint">규칙에 안 맞는 이름이라 대시보드에 기업으로 안 들어온 폴더예요. 기업 폴더가 아니면(예: 공용 자료 폴더) 그냥 두셔도 돼요.</p>' +
+        '<ul class="naming-list">' + folders.map(function(f){
+          return '<li>' + (f.round ? '<span class="naming-path">[' + escapeHtml(f.round) + '] </span>' : '') +
+            '<span class="naming-path">' + escapeHtml(f.path || '') + '</span>' + escapeHtml(f.name) + '</li>';
+        }).join('') + '</ul>' +
+        (folders.length < ni.folderCount ? '<p class="naming-more">외 ' + (ni.folderCount - folders.length) + '개는 목록이 길어 생략했어요.</p>' : '') +
+        '</div>';
+    }
+
+    var files = ni.files || [];
+    if(ni.fileCount){
+      // 같은 기업의 파일끼리 묶어서 보여줘요.
+      var groups = [];
+      var byKey = {};
+      files.forEach(function(f){
+        var key = (f.round || '') + '|' + (f.folderNc || '') + '|' + (f.company || '');
+        if(!byKey[key]){ byKey[key] = { f: f, names: [] }; groups.push(byKey[key]); }
+        byKey[key].names.push(f.name);
+      });
+      html += '<div class="naming-section"><h4>항목을 알 수 없는 파일 ' + ni.fileCount + '개</h4>' +
+        '<p class="naming-hint">회차·계획서·보고서 어디에도 안 걸린 파일이에요. 제출 서류인데 여기 있으면 이름을 고쳐야 체크돼요. 사진·참고자료 같은 기타 파일이면 무시하셔도 돼요.</p>' +
+        '<ul class="naming-list">' + groups.map(function(g){
+          return '<li><span class="naming-company">' + (g.f.folderNc ? escapeHtml(g.f.folderNc) + '. ' : '') + escapeHtml(g.f.company || '(기업명 없음)') + '</span>' +
+            (g.f.round ? ' <span class="naming-path">[' + escapeHtml(g.f.round) + ']</span>' : '') +
+            '<div class="naming-files">' + g.names.map(escapeHtml).join(', ') + '</div></li>';
+        }).join('') + '</ul>' +
+        (files.length < ni.fileCount ? '<p class="naming-more">외 ' + (ni.fileCount - files.length) + '개는 목록이 길어 생략했어요.</p>' : '') +
+        '</div>';
+    }
+    body.innerHTML = html;
+  }
+
+  function namingIssueSuffix(r){
+    var n = (r && ((r.namingFolderCount || 0) + (r.namingFileCount || 0))) || 0;
+    return n ? ' · ⚠ 이름 확인 필요 ' + n + '건(표 위 안내 참고)' : '';
   }
 
   function setPage(page){
@@ -38,6 +122,7 @@
     if(page === 'users') fetchUsers();
     if(page === 'program') renderProgramView();
     if(page === 'report') renderReportView();
+    renderNamingIssues();
   }
 
   // 로그인한 계정 권한 + 현재 탭(취합현황/업로드현황)에 따라 편집용 버튼/문구를 보이거나 숨겨요.
@@ -194,6 +279,7 @@
           } else {
             msg = '폴더 ' + r.foldersScanned + '개 확인 · 기존 ' + r.matched + '개 업데이트 · 신규 ' + r.created + '개 추가' +
               (r.skipped ? ' · 이미 완료 ' + r.skipped + '개 건너뜀' : '');
+            msg += namingIssueSuffix(r);
             if(r.debug) msg += ' — ' + r.debug;
           }
           // pollOnce가 화면을 새로고침한 "뒤"에 결과 메시지를 표시해야
@@ -214,6 +300,12 @@
     // "취합현황 업데이트"는 새 기업을 찾으려고 폴더 트리를 다시 훑지 않고, 이미 아는
     // 기업들의 저장된 폴더에서 파일만 다시 확인해요 — 평소 반복 작업은 이쪽이 훨씬 빨라요.
     // 새 기업이 추가됐을 때만 위의 "드라이브에서 불러오기"를 쓰면 돼요.
+    var namingToggleBtn = document.getElementById('naming-issues-toggle');
+    if(namingToggleBtn) namingToggleBtn.addEventListener('click', function(){
+      namingExpanded = !namingExpanded;
+      renderNamingIssues();
+    });
+
     if(refreshChecklistBtn) refreshChecklistBtn.addEventListener('click', function(){
       if(!isAdmin()) return;
       refreshChecklistBtn.disabled = true;
@@ -238,7 +330,7 @@
             msg = '취합현황 업데이트 오류: ' + r.error;
           } else {
             msg = '확인 ' + r.checked + '개 · 갱신 ' + r.updated + '개' +
-              (r.skipped ? ' · 이미 완료 ' + r.skipped + '개 건너뜀' : '');
+              (r.skipped ? ' · 이미 완료 ' + r.skipped + '개 건너뜀' : '') + namingIssueSuffix(r);
             if(r.debug) msg += ' — ' + r.debug;
           }
           return pollOnce(true).then(function(){ saveText.textContent = msg; });

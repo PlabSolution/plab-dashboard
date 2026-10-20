@@ -93,6 +93,8 @@
       // 로그인 계정(u)이 정해졌으니, 이 계정·이 브라우저에서 예전에 골라둔 기업이 있으면 불러와요.
       uploadCompanySelection = loadUploadCompanySelection();
       STATE.lastSync = (data && data.lastSync) || null;
+      STATE.namingIssues = (data && data.namingIssues) || null;
+      STATE.namingRules = (data && data.namingRules) || null;
       // sessionCount는 normalizeRow가 세션 배열 길이를 결정할 때 참조하니, map(normalizeRow)보다
       // 먼저 갱신해둬요.
       STATE.sessionCount = (data && data.sessionCount) || STATE.sessionCount || 6;

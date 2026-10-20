@@ -62,6 +62,7 @@ function syncFromDrive(onlyRoundName, range) {
     var TIME_BUDGET_MS = 4.5 * 60 * 1000;
     var totals = { foldersScanned: 0, matched: 0, created: 0, skipped: 0 };
     var debugParts = [];
+    var namingIssues = newNamingIssues('sync');
 
     for (var ri = 0; ri < rounds.length; ri++) {
       if (Date.now() - startTime > TIME_BUDGET_MS) {
@@ -74,7 +75,7 @@ function syncFromDrive(onlyRoundName, range) {
       // 재귀 탐색에서 건너뛰어요.
       var otherRoundFolderIds = allRounds.filter(function (r) { return r.driveFolderId !== rounds[ri].driveFolderId; })
         .map(function (r) { return r.driveFolderId; });
-      var result = syncRoundFolder(rounds[ri], sessionCount, keywordMap, sessionNums, startTime, TIME_BUDGET_MS, otherRoundFolderIds, range);
+      var result = syncRoundFolder(rounds[ri], sessionCount, keywordMap, sessionNums, startTime, TIME_BUDGET_MS, otherRoundFolderIds, range, namingIssues);
       totals.foldersScanned += result.foldersScanned;
       totals.matched += result.matched;
       totals.created += result.created;
@@ -83,16 +84,27 @@ function syncFromDrive(onlyRoundName, range) {
     }
 
     if (debugParts.length) totals.debug = debugParts.join(' / ');
+    var saved = saveNamingIssues(namingIssues, namingScopeLabel(onlyRoundName, range));
+    totals.namingFolderCount = saved.folderCount;
+    totals.namingFileCount = saved.fileCount;
     return totals;
   } finally {
     lock.releaseLock();
   }
 }
 
+// 이름 점검 결과가 어느 범위를 돌린 결과인지 화면에 같이 보여주려고 만드는 설명
+function namingScopeLabel(onlyRoundName, range) {
+  var parts = [];
+  parts.push(onlyRoundName && onlyRoundName !== 'all' ? onlyRoundName : '전체 회차');
+  if (range && typeof range.from === 'number') parts.push('폴더NC ' + range.from + '~' + range.to);
+  return parts.join(' · ');
+}
+
 // 회차 하나의 드라이브 루트 폴더를 스캔해서 rows 시트에 반영해요. 기존 행을 찾을 때
 // "기업명 + 회차"로 매칭해서, 같은 기업이 다른 회차에도 있어도 서로 안 섞이고 독립된
 // 행으로 남아요.
-function syncRoundFolder(round, sessionCount, keywordMap, sessionNums, startTime, TIME_BUDGET_MS, excludeFolderIds, range) {
+function syncRoundFolder(round, sessionCount, keywordMap, sessionNums, startTime, TIME_BUDGET_MS, excludeFolderIds, range, namingIssues) {
   var folderId = round.driveFolderId;
   var roundName = round.name;
   var excludeList = excludeFolderIds || [];
@@ -108,6 +120,12 @@ function syncRoundFolder(round, sessionCount, keywordMap, sessionNums, startTime
     companyFolders = collectCompanyFolders(folderId, excludeFolderIds);
   } catch (err) {
     return { foldersScanned: 0, matched: 0, created: 0, skipped: 0, debug: '드라이브 폴더에 접근할 수 없어요: ' + err.message + ' — ID가 정확한지, Drive API 서비스를 추가했는지 확인해주세요. (' + diagPrefix() + ')' };
+  }
+
+  if (namingIssues && companyFolders.suspectFolders) {
+    companyFolders.suspectFolders.forEach(function (f) {
+      namingIssues.folders.push({ round: roundName, path: f.path, name: f.name });
+    });
   }
 
   if (companyFolders.length === 0) {
@@ -191,10 +209,11 @@ function syncRoundFolder(round, sessionCount, keywordMap, sessionNums, startTime
     var info = pending[pi].info;
     var rowIndex = pending[pi].rowIndex;
     var fileNames = fileListsById[info.id] || [];
+    collectUnrecognizedFiles(namingIssues, info, fileNames, keywordMap, roundName);
     var flags = {};
     keywordMap.forEach(function (k) {
       flags[k.field] = fileNames.some(function (name) {
-        return k.keywords.some(function (kw) { return name.indexOf(kw) !== -1; });
+        return k.keywords.some(function (kw) { return nameHasKeyword(name, kw); });
       });
     });
 
@@ -253,7 +272,8 @@ function syncRoundFolder(round, sessionCount, keywordMap, sessionNums, startTime
   var companyList = companyFolders.length <= 8
     ? companyFolders.map(function (f) { return f.company; }).join(', ')
     : companyFolders.slice(0, 8).map(function (f) { return f.company; }).join(', ') + ' 외 ' + (companyFolders.length - 8) + '개';
-  var debugMsg = diagPrefix(companyFolders) + ', 찾은 기업 ' + companyFolders.length + '개(' + companyList + ')';
+  // 정상일 때는 화면 상단에 짧게만 — folderId·제외 목록 같은 진단 정보는 문제가 있을 때만 붙여요.
+  var debugMsg = '찾은 기업 ' + companyFolders.length + '개(' + companyList + ')';
   if (fileListsById.__error) debugMsg = '⚠ ' + fileListsById.__error + ' | ' + debugMsg;
   return {
     foldersScanned: foldersScanned, matched: matched, created: created, skipped: skipped,
@@ -293,9 +313,17 @@ function refreshChecklistFromDrive(onlyRoundName, range) {
     var TIME_BUDGET_MS = 4.5 * 60 * 1000;
     var totals = { checked: 0, updated: 0, skipped: 0 };
     var debugParts = [];
+    // 업데이트는 폴더 트리를 다시 훑지 않으니, 폴더 문제는 마지막 "드라이브에서 불러오기"
+    // 결과를 그대로 이어받고 파일 문제만 새로 모아요.
+    var namingIssues = newNamingIssues('refresh');
+    var prevNaming = getNamingIssues();
+    if (prevNaming) {
+      namingIssues.folders = prevNaming.folders || [];
+      namingIssues.folderCount = prevNaming.folderCount || namingIssues.folders.length;
+    }
 
     for (var ri = 0; ri < rounds.length; ri++) {
-      var result = refreshRoundChecklist(rounds[ri].name, sessionNums, keywordMap, startTime, TIME_BUDGET_MS, range);
+      var result = refreshRoundChecklist(rounds[ri].name, sessionNums, keywordMap, startTime, TIME_BUDGET_MS, range, namingIssues);
       totals.checked += result.checked;
       totals.updated += result.updated;
       totals.skipped += result.skipped;
@@ -303,13 +331,16 @@ function refreshChecklistFromDrive(onlyRoundName, range) {
     }
 
     if (debugParts.length) totals.debug = debugParts.join(' / ');
+    var saved = saveNamingIssues(namingIssues, namingScopeLabel(onlyRoundName, range));
+    totals.namingFolderCount = saved.folderCount;
+    totals.namingFileCount = saved.fileCount;
     return totals;
   } finally {
     lock.releaseLock();
   }
 }
 
-function refreshRoundChecklist(roundName, sessionNums, keywordMap, startTime, TIME_BUDGET_MS, range) {
+function refreshRoundChecklist(roundName, sessionNums, keywordMap, startTime, TIME_BUDGET_MS, range, namingIssues) {
   var sheet = getSheet();
   var values = sheet.getDataRange().getValues();
   var companyCol = HEADERS.indexOf('company');
@@ -355,10 +386,11 @@ function refreshRoundChecklist(roundName, sessionNums, keywordMap, startTime, TI
     for (var h = 0; h < HEADERS.length; h++) existing[HEADERS[h]] = row[h];
 
     var fileNames = fileListsById[c.folderId] || [];
+    collectUnrecognizedFiles(namingIssues, { folderNc: existing.folderNc, company: existing.company }, fileNames, keywordMap, roundName);
     var flags = {};
     keywordMap.forEach(function (k) {
       flags[k.field] = fileNames.some(function (name) {
-        return k.keywords.some(function (kw) { return name.indexOf(kw) !== -1; });
+        return k.keywords.some(function (kw) { return nameHasKeyword(name, kw); });
       });
     });
 
@@ -485,11 +517,14 @@ function batchListDriveFiles(folderIds) {
 function collectCompanyFolders(rootId, excludeFolderIds) {
   var results = [];
   var excludedNames = [];
+  // 기업 폴더 규칙에 안 맞고, 안에 하위 폴더도 없는 "막다른" 폴더 — 이름을 잘못 지은 기업
+  // 폴더일 가능성이 높아서 확인 목록에 올려요.
+  var suspectFolders = [];
   var COMPANY_NAME_RE = /^(\d+)[_.]\s*([^_]+)_(.+)$/;
   var exclude = excludeFolderIds || [];
 
-  function walk(folderId, depth) {
-    if (depth > 6) return;
+  function walk(folderId, depth, path) {
+    if (depth > 6) return -1;
     var children = listDriveChildren(folderId, true);
     children.forEach(function (child) {
       if (exclude.indexOf(child.id) !== -1) {
@@ -500,12 +535,15 @@ function collectCompanyFolders(rootId, excludeFolderIds) {
       if (m) {
         results.push({ id: child.id, folderNc: m[1], region: m[2].trim(), company: m[3].trim() });
       } else {
-        walk(child.id, depth + 1);
+        var sub = walk(child.id, depth + 1, path + child.name + ' / ');
+        if (sub === 0) suspectFolders.push({ name: child.name, path: path });
       }
     });
+    return children.length;
   }
 
-  walk(rootId, 0);
+  walk(rootId, 0, '');
   results.excludedNames = excludedNames;
+  results.suspectFolders = suspectFolders;
   return results;
 }

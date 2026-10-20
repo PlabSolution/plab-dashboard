@@ -17,6 +17,11 @@ function handleRead(user, action) {
     rows = rows.filter(function (r) { return (r.region || '미지정') === user.region; });
   }
   var out = { rows: rows, role: user.role, region: user.region, lastSync: getLastSyncInfo(), sessionCount: data.sessionCount, flagThresholds: getFlagThresholds(), rounds: readRounds() };
+  // 드라이브 이름 점검 결과는 동기화를 돌리는 관리자에게만 보여줘요.
+  if (user.role === 'admin') {
+    out.namingIssues = getNamingIssues();
+    out.namingRules = getNamingRules();
+  }
   return out;
 }
 
