@@ -96,6 +96,14 @@
     body.innerHTML = html;
   }
 
+  function continuingSuffix(r){
+    return (r && r.continuing) ? ' · ⏳ 남은 부분은 1분 뒤부터 자동으로 이어서 처리돼요' : '';
+  }
+
+  function newFolderHintSuffix(r){
+    return (r && r.newFolderHints) ? ' · 📁 새 기업 폴더 ' + r.newFolderHints + '개가 보여요 — "드라이브에서 불러오기"를 눌러주세요' : '';
+  }
+
   function namingIssueSuffix(r){
     var n = (r && ((r.namingFolderCount || 0) + (r.namingFileCount || 0))) || 0;
     return n ? ' · ⚠ 이름 확인 필요 ' + n + '건(표 위 안내 참고)' : '';
@@ -276,10 +284,12 @@
             msg = '드라이브 연동 응답을 확인할 수 없어요.';
           } else if(r.error){
             msg = '드라이브 연동 오류: ' + r.error;
+          } else if(r.running){
+            msg = '이미 드라이브 작업이 진행 중이에요. 끝나면 자동으로 반영돼요.';
           } else {
             msg = '폴더 ' + r.foldersScanned + '개 확인 · 기존 ' + r.matched + '개 업데이트 · 신규 ' + r.created + '개 추가' +
               (r.skipped ? ' · 이미 완료 ' + r.skipped + '개 건너뜀' : '');
-            msg += namingIssueSuffix(r);
+            msg += namingIssueSuffix(r) + continuingSuffix(r);
             if(r.debug) msg += ' — ' + r.debug;
           }
           // pollOnce가 화면을 새로고침한 "뒤"에 결과 메시지를 표시해야
@@ -328,9 +338,13 @@
             msg = '취합현황 업데이트 응답을 확인할 수 없어요.';
           } else if(r.error){
             msg = '취합현황 업데이트 오류: ' + r.error;
+          } else if(r.running){
+            msg = '이미 드라이브 작업이 진행 중이에요. 끝나면 자동으로 반영돼요.';
+          } else if(r.mode === 'incremental' && !r.checked && !r.skipped && r.finished){
+            msg = '마지막 확인 이후 새로 바뀐 파일이 없어요.' + newFolderHintSuffix(r);
           } else {
-            msg = '확인 ' + r.checked + '개 · 갱신 ' + r.updated + '개' +
-              (r.skipped ? ' · 이미 완료 ' + r.skipped + '개 건너뜀' : '') + namingIssueSuffix(r);
+            msg = (r.mode === 'incremental' ? '바뀐 기업만 확인 ' : '확인 ') + r.checked + '개 · 갱신 ' + r.updated + '개' +
+              (r.skipped ? ' · 이미 완료 ' + r.skipped + '개 건너뜀' : '') + namingIssueSuffix(r) + newFolderHintSuffix(r) + continuingSuffix(r);
             if(r.debug) msg += ' — ' + r.debug;
           }
           return pollOnce(true).then(function(){ saveText.textContent = msg; });
@@ -722,7 +736,7 @@
     if(stored && stored.u && stored.t){
       AUTH.u = stored.u; AUTH.t = stored.t;
       setSyncStatus('loading');
-      fetchRows().then(function(rows){
+      fetchRows(true).then(function(rows){
         STATE.rows = rows;
         hideLoginScreen();
         setSyncStatus('synced');

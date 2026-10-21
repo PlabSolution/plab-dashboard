@@ -4,23 +4,31 @@ function doGet() {
 }
 
 // 조회 요청 공통 처리 (POST action: 'read')
-function handleRead(user, action) {
+// clientVersion: 화면이 가진 데이터 버전. 서버 버전과 같으면 시트를 안 읽고 "그대로"라고만 답해요.
+function handleRead(user, action, clientVersion) {
   var ADMIN_ONLY_GET_ACTIONS = ['getLog', 'getUsers'];
   if (ADMIN_ONLY_GET_ACTIONS.indexOf(action) !== -1 && user.role !== 'admin') {
     return { ok: false, error: 'forbidden', message: '관리자만 볼 수 있어요.' };
   }
   if (action === 'getLog') return { ok: true, log: readLog(200) };
   if (action === 'getUsers') return { ok: true, users: getUsers() };
-  var data = readAll();
-  var rows = data.rows;
+  if (clientVersion && clientVersion === getDataVersion_()) {
+    return { ok: true, unchanged: true, v: clientVersion, role: user.role, region: user.region };
+  }
+  var base = getBasePayload_();
+  var rows = base.rows;
   if (user.region && user.region !== 'all') {
     rows = rows.filter(function (r) { return (r.region || '미지정') === user.region; });
   }
-  var out = { rows: rows, role: user.role, region: user.region, lastSync: getLastSyncInfo(), sessionCount: data.sessionCount, flagThresholds: getFlagThresholds(), rounds: readRounds() };
-  // 드라이브 이름 점검 결과는 동기화를 돌리는 관리자에게만 보여줘요.
+  var out = {
+    v: base.v, rows: rows, role: user.role, region: user.region, lastSync: base.lastSync,
+    sessionCount: base.sessionCount, flagThresholds: base.flagThresholds, rounds: base.rounds
+  };
+  // 드라이브 이름 점검·진행 중인 동기화 작업은 동기화를 돌리는 관리자에게만 보여줘요.
   if (user.role === 'admin') {
-    out.namingIssues = getNamingIssues();
-    out.namingRules = getNamingRules();
+    out.namingIssues = base.namingIssues;
+    out.namingRules = base.namingRules;
+    out.driveJob = base.driveJob;
   }
   return out;
 }
@@ -40,64 +48,67 @@ function doPost(e) {
       return respond({ ok: true });
     }
     if (body.action === 'read') {
-      return respond(handleRead(user, body.sub));
+      return respond(handleRead(user, body.sub, body.v));
     }
-
-    if (body.action === 'setUpload') {
-      return respond(setUploadField(user, body.id, body.field, body.value));
-    }
-
-    if (user.role !== 'admin') {
-      return respond({ ok: false, error: 'forbidden', message: '이 계정은 수정 권한이 없어요.' });
-    }
-
-    if (body.action === 'upsert' && body.row) {
-      upsertRow(body.row, user);
-      return respond({ ok: true });
-    }
-    if (body.action === 'delete' && body.id) {
-      deleteRow(body.id, user);
-      return respond({ ok: true });
-    }
-    if (body.action === 'syncFromDrive') {
-      var result = syncFromDrive(body.round, body.range);
-      recordSyncResult(result);
-      return respond({ ok: true, result: result, lastSync: getLastSyncInfo() });
-    }
-    if (body.action === 'refreshChecklist') {
-      // syncFromDrive와 다른 결과 모양(checked/updated)이라 recordSyncResult는 안 씀 —
-      // "마지막 드라이브 동기화" 기록은 새 기업 탐색이 있는 syncFromDrive 전용으로 남겨둠.
-      return respond({ ok: true, result: refreshChecklistFromDrive(body.round, body.range) });
-    }
-    if (body.action === 'setSessionCount') {
-      return respond(setSessionCountConfig(body.value, user));
-    }
-    if (body.action === 'setFlagThresholds') {
-      return respond(setFlagThresholds(body.value, user));
-    }
-    if (body.action === 'addUser') {
-      return respond(addUser(body.username, body.role, body.region, body.password, user));
-    }
-    if (body.action === 'updateUserRole') {
-      return respond(updateUserRole(body.username, body.role, body.region, user));
-    }
-    if (body.action === 'resetUserPassword') {
-      return respond(resetUserPassword(body.username, body.password, user));
-    }
-    if (body.action === 'deleteUser') {
-      return respond(deleteUser(body.username, user));
-    }
-    if (body.action === 'upsertRound' && body.round) {
-      return respond(upsertRound(body.round, user));
-    }
-    if (body.action === 'deleteRound' && body.id) {
-      return respond(deleteRound(body.id, user));
-    }
-    return respond({ ok: false, error: 'unknown action', message: '알 수 없는 요청이에요(action: ' + body.action + '). 배포가 최신 코드로 안 됐을 수 있어요.' });
+    // 여기부터는 데이터를 바꾸는 요청이라, 처리 후 버전을 올려서 다른 화면들이 새로 받아가게 해요.
+    var res = handleWrite_(user, body);
+    bumpDataVersion_();
+    return respond(res);
   } catch (err) {
     Logger.log('doPost 오류: ' + err + (err && err.stack ? ('\n' + err.stack) : ''));
     return respond({ ok: false, error: String(err), message: String(err) });
   }
+}
+
+function handleWrite_(user, body) {
+  if (body.action === 'setUpload') {
+    return setUploadField(user, body.id, body.field, body.value);
+  }
+
+  if (user.role !== 'admin') {
+    return { ok: false, error: 'forbidden', message: '이 계정은 수정 권한이 없어요.' };
+  }
+
+  if (body.action === 'upsert' && body.row) {
+    upsertRow(body.row, user);
+    return { ok: true };
+  }
+  if (body.action === 'delete' && body.id) {
+    deleteRow(body.id, user);
+    return { ok: true };
+  }
+  if (body.action === 'syncFromDrive') {
+    return { ok: true, result: startDriveJob('sync', body.round, body.range) };
+  }
+  if (body.action === 'refreshChecklist') {
+    // 마지막 확인 이후 바뀐 기업 폴더만 다시 봐요(forceFull이면 전체).
+    return { ok: true, result: startDriveJob('refresh', body.round, body.range, { forceFull: !!body.full }) };
+  }
+  if (body.action === 'setSessionCount') {
+    return setSessionCountConfig(body.value, user);
+  }
+  if (body.action === 'setFlagThresholds') {
+    return setFlagThresholds(body.value, user);
+  }
+  if (body.action === 'addUser') {
+    return addUser(body.username, body.role, body.region, body.password, user);
+  }
+  if (body.action === 'updateUserRole') {
+    return updateUserRole(body.username, body.role, body.region, user);
+  }
+  if (body.action === 'resetUserPassword') {
+    return resetUserPassword(body.username, body.password, user);
+  }
+  if (body.action === 'deleteUser') {
+    return deleteUser(body.username, user);
+  }
+  if (body.action === 'upsertRound' && body.round) {
+    return upsertRound(body.round, user);
+  }
+  if (body.action === 'deleteRound' && body.id) {
+    return deleteRound(body.id, user);
+  }
+  return { ok: false, error: 'unknown action', message: '알 수 없는 요청이에요(action: ' + body.action + '). 배포가 최신 코드로 안 됐을 수 있어요.' };
 }
 
 function respond(obj) {

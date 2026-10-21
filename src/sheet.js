@@ -167,8 +167,8 @@ function readAll() {
   return { rows: rows, sessionCount: sessionCount };
 }
 
-function rowToArray(row, existingArr) {
-  var sessionCount = getSessionCount();
+function rowToArray(row, existingArr, sessionCountOpt) {
+  var sessionCount = sessionCountOpt || getSessionCount();
   return HEADERS.map(function (h, i) {
     var sMatch = /^session(\d+)$/.exec(h);
     if (sMatch) {

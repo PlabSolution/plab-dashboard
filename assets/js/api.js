@@ -43,12 +43,22 @@
     saveDot.className = 'save-dot ' + status;
     var map = {
       loading: '불러오는 중…',
-      synced: '동기화됨 · ' + nowLabel(),
+      synced: '동기화됨 · ' + nowLabel() + driveJobLabel(),
       syncing: '저장 중…',
       error: '연결에 실패했어요 (URL 또는 배포 설정을 확인해 주세요)',
       'setup-needed': '서버 주소(CONFIG.API_URL)가 설정되지 않았어요'
     };
     saveText.textContent = map[status] || '';
+  }
+
+  // 드라이브 동기화가 이어 달리기 중이면 상단 상태에 진행 상황을 같이 보여줘요(관리자).
+  function driveJobLabel(){
+    var j = STATE.driveJob;
+    if(!j || j.finished) return '';
+    var kind = j.type === 'sync' ? '드라이브 불러오기' : '취합현황 업데이트';
+    var t = j.totals || {};
+    var done = j.type === 'sync' ? (t.foldersScanned || 0) : ((t.checked || 0) + (t.skipped || 0));
+    return ' · ⏳ ' + kind + ' 진행 중 (' + done + '개 처리, 1분마다 자동으로 이어서 처리)';
   }
 
   function isPlaceholder(u){ return !u || u.indexOf('PASTE_YOUR') !== -1; }
@@ -70,26 +80,42 @@
     loginScreen.hidden = true;
   }
 
+  var pollCount = 0;
   function startPolling(){
     if(pollingStarted) return;
     pollingStarted = true;
-    setInterval(function(){ pollOnce(false); }, CONFIG.POLL_INTERVAL_MS);
+    setInterval(function(){
+      // 다른 탭을 보고 있으면 서버에 묻지 않아요. 돌아오면 아래 visibilitychange에서 바로 한 번 가져와요.
+      if(document.hidden) return;
+      pollCount++;
+      // 5분에 한 번은 버전 확인 없이 통째로 받아요(혹시 모를 어긋남 방지).
+      pollOnce(false, pollCount % 15 === 0);
+    }, CONFIG.POLL_INTERVAL_MS);
+    document.addEventListener('visibilitychange', function(){
+      if(!document.hidden) pollOnce(false);
+    });
   }
 
-  function fetchRows(){
+  // full=true면 버전 확인 없이 무조건 전체를 받아요(로그인 직후 등).
+  // 서버 데이터가 그대로면 null로 끝나요 — 호출부는 null이면 화면을 다시 그리지 않아요.
+  function fetchRows(full){
     // 캐시된(구버전) 응답을 절대 재사용하지 않도록 매번 새 쿼리스트링을 붙이고
     // cache:'no-store'를 지정합니다. Apps Script 웹 앱 GET 응답이 브라우저나
     // 중간 캐시에 저장되어, 배포를 새로 해도 예전 값(예전 날짜 형식, 예전 오류)이
     // 계속 보이는 문제를 막기 위한 처리예요.
     // 아이디/비밀번호는 매 요청에 같이 실어보내서, 서버가 그때그때 권한(관리자/열람,
     // 담당 권역)을 확인해서 그에 맞는 데이터만 돌려주도록 해요.
-    return apiGet().then(function(data){
+    var payload = (!full && STATE.dataVersion) ? { v: STATE.dataVersion } : {};
+    return apiPost('read', payload).then(function(data){
       if(data && data.error === 'auth'){
         var err = new Error(data.message || '아이디 또는 비밀번호가 올바르지 않아요.');
         err.isAuthError = true;
         throw err;
       }
       if(data && data.role){ AUTH.role = data.role; AUTH.region = data.region; }
+      if(data && data.unchanged) return null;
+      STATE.dataVersion = (data && data.v) || null;
+      STATE.driveJob = (data && data.driveJob) || null;
       // 로그인 계정(u)이 정해졌으니, 이 계정·이 브라우저에서 예전에 골라둔 기업이 있으면 불러와요.
       uploadCompanySelection = loadUploadCompanySelection();
       STATE.lastSync = (data && data.lastSync) || null;
@@ -166,7 +192,8 @@
       AUTH.u = res.username || username; AUTH.t = res.token; AUTH.p = null;
       AUTH.role = res.role; AUTH.region = res.region;
       if(loginPassword) loginPassword.value = '';
-      return fetchRows();
+      STATE.dataVersion = null;
+      return fetchRows(true);
     }).then(function(rows){
       saveAuth({ u: AUTH.u, t: AUTH.t });
       STATE.rows = rows;
@@ -237,13 +264,14 @@
       });
   }
 
-  function pollOnce(force){
+  function pollOnce(force, full){
     if(!force){
       if(document.activeElement && rowsBody.contains(document.activeElement)) return Promise.resolve();
       if(inFlight > 0 || Object.keys(pendingSaves).length) return Promise.resolve();
     }
-    return fetchRows().then(function(rows){
-      STATE.rows = rows.length ? rows : STATE.rows;
+    return fetchRows(full || force).then(function(rows){
+      if(rows === null){ setSyncStatus('synced'); return; }
+      STATE.rows = rows;
       setSyncStatus('synced');
       renderTableHeader();
       renderAll();

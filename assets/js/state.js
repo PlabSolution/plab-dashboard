@@ -38,7 +38,7 @@
   var viewMode = 'collect'; // 'collect'(취합현황) | 'upload'(업로드현황)
   var currentPage = 'dashboard'; // 'dashboard' | 'sessions' — 사이드바 대시보드/세션 현황 전환
 
-  var STATE = { rows: [], rounds: [], lastSync: null, sessionCount: 6, flagThresholds: { caution:3, alert:5, issue:7 } };
+  var STATE = { rows: [], rounds: [], lastSync: null, sessionCount: 6, flagThresholds: { caution:3, alert:5, issue:7 }, dataVersion: null, driveJob: null };
   var filters = { q:'', region:'all', status:'all', flag:'all', round: DEFAULT_ROUND };
   var apiUrl = null;
   var pendingSaves = {};
@@ -88,6 +88,9 @@
   }
   function clearAuth(){
     AUTH.t = null; AUTH.p = null;
+    // 다른 계정으로 다시 로그인했을 때 이전 계정의 "버전"으로 데이터가 그대로라고 착각하지 않게
+    STATE.dataVersion = null;
+    STATE.driveJob = null;
     try{ localStorage.removeItem(AUTH_STORAGE_KEY); }catch(e){}
   }
 
