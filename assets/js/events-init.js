@@ -8,6 +8,7 @@
     renderRoundNav();
     if(currentPage === 'dashboard'){
       renderStats();
+      renderDashboardCharts();
       renderQuickPanels();
     }
     if(currentPage === 'collect' || currentPage === 'upload'){
@@ -124,7 +125,7 @@
     if(navUsersBtn) navUsersBtn.classList.toggle('active', page === 'users');
     if(navProgramBtn) navProgramBtn.classList.toggle('active', page === 'program');
     if(navReportBtn) navReportBtn.classList.toggle('active', page === 'report');
-    if(page === 'dashboard'){ renderStats(); renderQuickPanels(); }
+    if(page === 'dashboard'){ renderStats(); renderDashboardCharts(); renderQuickPanels(); }
     if(page === 'collect' || page === 'upload') setViewMode(page);
     if(page === 'settings') renderSettingsView();
     if(page === 'users') fetchUsers();
@@ -648,6 +649,7 @@
   }
 
   function init(){
+    setupChartTooltip();
     statsGrid = document.getElementById('stats-grid');
     quickPanelsEl = document.getElementById('quick-panels');
     rowsBody = document.getElementById('rows-body');

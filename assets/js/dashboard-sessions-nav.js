@@ -28,8 +28,8 @@
       '<div class="stat-card"><div class="stat-label">서류 제출</div><div class="stat-value">' + s.planCount + '<span class="stat-unit">수행계획서</span></div>' +
         '<div class="stat-value small">' + s.reportCount + '<span class="stat-unit">결과보고서</span></div></div>' +
       '<div class="stat-card"><div class="stat-label">이슈 표시</div><div class="stat-value">' + s.issueCount + '<span class="stat-unit">문제</span></div>' +
-        '<div class="stat-value small">' + s.alertCount + '<span class="stat-unit">경고</span> · ' + s.cautionCount + '<span class="stat-unit">주의</span></div>' + severityMeter + '</div>' +
-      '<div class="stat-card wide"><div class="stat-label">권역별 현황</div><div class="chip-row">' + regionChips + '</div></div>';
+        '<div class="stat-value small">' + s.alertCount + '<span class="stat-unit">경고</span> · ' + s.cautionCount + '<span class="stat-unit">주의</span></div>' + severityMeter + '</div>';
+    // 권역별 기업 수는 아래 "권역별 평균 수행도" 그래프에 같이 보여줘요.
   }
 
   // "즉시 처리 필요"·"회차별 참여 현황" — 전부 STATE.rows에서 바로 계산하는 실데이터예요.
