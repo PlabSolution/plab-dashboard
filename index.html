@@ -8,42 +8,412 @@
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/plab-ops-theme.css">
+<style>
+/* =====================================================================
+   shadcn/ui 스타일 레이어
+   - 기존 styles.css / plab-ops-theme.css 위에 덮어씀 (body.ui 범위)
+   - 토큰은 --ui-* 이름으로 따로 둬서 기존 CSS 변수와 겹치지 않게 함
+   - JS가 그리는 표·차트 내부 스타일은 건드리지 않음
+   ===================================================================== */
+:root {
+  /* 기존 plab-ops-theme.css 변수를 그대로 가져와서 JS가 그리는 카드·차트와 색을 맞춤 */
+  --ui-background: var(--bg, #f5f6fa);
+  --ui-foreground: var(--text, #1f2437);
+  --ui-card: var(--panel, #ffffff);
+  --ui-muted: var(--panel-soft, #f7f8fc);
+  --ui-muted-foreground: var(--muted, #6b7285);
+  --ui-border: var(--line, #e6e8f0);
+  --ui-input: #dfe2ec;
+  --ui-primary: var(--primary, #3b5bdb);
+  --ui-primary-strong: var(--primary-strong, #364fc7);
+  --ui-primary-foreground: #ffffff;
+  --ui-primary-soft: var(--primary-soft, #edf2ff);
+  --ui-ring: rgba(59, 91, 219, 0.25);
+  --ui-destructive: var(--danger, #e03131);
+  --ui-destructive-soft: var(--danger-soft, #ffeded);
+  --ui-warning: var(--warning, #e8590c);
+  --ui-warning-soft: var(--warning-soft, #fff1e6);
+  --ui-sidebar: var(--sidebar, #ffffff);
+  --ui-sidebar-foreground: #4a5068;
+  --ui-sidebar-muted: var(--sidebar-muted, #8a90a2);
+  --ui-sidebar-accent: var(--panel-soft, #f7f8fc);
+  --ui-radius: 0.625rem;
+  --ui-shadow-xs: 0 1px 2px rgba(31, 36, 55, 0.05);
+  --ui-sidebar-width: 15rem;
+}
+
+[hidden] { display: none !important; }
+
+body.ui {
+  margin: 0;
+  background: var(--ui-background);
+  color: var(--ui-foreground);
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 아이콘 (Lucide) */
+.ui .i { width: 1rem; height: 1rem; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ───────── 레이아웃 ───────── */
+.ui .layout { display: grid; grid-template-columns: var(--ui-sidebar-width) minmax(0, 1fr); min-height: 100vh; }
+.ui .page { min-width: 0; display: flex; flex-direction: column; gap: 1rem; padding: 0 1.5rem 3rem; max-width: none; margin: 0; }
+.ui .page > :not(.topbar) { width: 100%; max-width: 80rem; margin-inline: auto; }
+
+/* ───────── 사이드바 ───────── */
+.ui .sidebar {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 0.75rem 0.75rem 1rem;
+  background: var(--ui-sidebar); color: var(--ui-sidebar-foreground);
+  border-right: 1px solid var(--ui-border);
+  scrollbar-width: thin;
+}
+.ui .sidebar .brand {
+  display: flex; align-items: center; gap: 0.625rem;
+  padding: 0.5rem 0.5rem 1rem; margin: 0;
+  font-size: 1.125rem; font-weight: 700; letter-spacing: 0.06em; color: var(--ui-foreground);
+}
+.ui .brand-mark {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 0.5rem;
+  background: var(--ui-primary); color: var(--ui-primary-foreground); font-size: 0.875rem; letter-spacing: 0;
+}
+.ui .brand-sub { display: block; font-size: 0.75rem; font-weight: 400; letter-spacing: 0; color: var(--ui-sidebar-muted); }
+.ui .nav-group, .ui #region-sidebar-section { display: flex; flex-direction: column; gap: 0.125rem; margin: 0 0 0.5rem; padding: 0; }
+.ui .sidebar-title {
+  padding: 0.5rem 0.5rem 0.25rem; margin: 0;
+  font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ui-sidebar-muted);
+}
+.ui .nav-item,
+.ui .region-nav-item {
+  position: relative; display: flex; align-items: center; gap: 0.625rem; width: 100%;
+  height: 2.25rem; padding: 0 0.625rem; margin: 0;
+  border: 0; border-radius: calc(var(--ui-radius) - 2px); background: transparent;
+  color: var(--ui-sidebar-foreground); font: inherit; font-size: 0.875rem; font-weight: 500;
+  text-align: left; text-decoration: none; cursor: pointer;
+  transition: background-color .15s, color .15s;
+}
+.ui .nav-item:hover,
+.ui .region-nav-item:hover { background: var(--ui-sidebar-accent); color: var(--ui-foreground); }
+.ui .nav-item.active,
+.ui .region-nav-item.active { background: var(--ui-primary-soft); border-color: transparent; color: var(--ui-primary-strong); font-weight: 600; }
+.ui .nav-item.active::before {
+  content: ""; position: absolute; left: -0.75rem; top: 0.5rem; bottom: 0.5rem;
+  width: 3px; border-radius: 0 3px 3px 0; background: var(--ui-primary);
+}
+.ui .nav-item:focus-visible,
+.ui .region-nav-item:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: -2px; }
+.ui .nav-item .icon,
+.ui .nav-item.active .icon { display: inline-flex; width: auto; height: auto; margin: 0; background: none; box-shadow: none; border-radius: 0; color: var(--ui-sidebar-muted); -webkit-mask: none; mask: none; }
+.ui .nav-item.active .icon { color: var(--ui-primary); }
+.ui .region-nav-item { justify-content: space-between; border: 1px solid transparent; height: 2.125rem; font-size: 0.8125rem; }
+.ui .region-nav-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui .region-nav-count {
+  flex: none; min-width: 1.5rem; padding: 0.0625rem 0.4375rem; border-radius: 999px; text-align: center;
+  background: var(--ui-muted); color: var(--ui-muted-foreground); font-size: 0.6875rem; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.ui .region-nav-item.active .region-nav-count { background: var(--ui-card); color: var(--ui-primary-strong); }
+.ui .nav-item .icon::before, .ui .nav-item .icon::after { content: none; }
+.ui .region-nav { display: flex; flex-direction: column; gap: 0.125rem; }
+.ui .sidebar-step-group { margin-top: 0.5rem; }
+.ui #step-message { padding: 0.5rem 0.625rem; margin-top: 0.25rem; border-radius: calc(var(--ui-radius) - 2px); background: var(--ui-primary-soft); color: var(--ui-primary-strong); font-size: 0.8125rem; font-weight: 600; }
+
+/* ───────── 상단바 ───────── */
+.ui .topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+  min-height: 3.5rem; padding: 0.5rem 1.5rem; margin: 0 -1.5rem;
+  background: color-mix(in oklch, var(--ui-background) 85%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ui-border);
+}
+.ui .topbar-main { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.ui .topbar h1 { margin: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; }
+.ui .topbar-status { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.8125rem; color: var(--ui-muted-foreground); }
+.ui .role-badge {
+  display: inline-flex; align-items: center; height: 1.375rem; padding: 0 0.5rem;
+  border-radius: 999px; background: var(--ui-primary-soft); color: var(--ui-primary);
+  font-size: 0.75rem; font-weight: 600;
+}
+.ui .ui-status { display: inline-flex; align-items: center; gap: 0.375rem; height: 1.75rem; padding: 0 0.625rem; border: 1px solid var(--ui-border); border-radius: 999px; background: var(--ui-card); }
+.ui .ui-separator-v { width: 1px; height: 1rem; background: var(--ui-border); }
+.ui .ui-nav-trigger { display: none; }
+
+/* ───────── 페이지 머리말 ───────── */
+.ui .ui-page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-top: 0.5rem; }
+.ui .ui-page-title { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; }
+.ui .ui-page-description { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ui-muted-foreground); }
+.ui .ui-stack { display: flex; flex-direction: column; gap: 1rem; }
+.ui #dashboard-view, .ui #table-view, .ui #report-view, .ui #program-view,
+.ui #settings-view, .ui #users-view { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ───────── 카드 ───────── */
+.ui .ui-card {
+  display: flex; flex-direction: column; gap: 1rem;
+  margin: 0; padding: 1.25rem 0;
+  background: var(--ui-card); color: var(--ui-foreground);
+  border: 1px solid var(--ui-border); border-radius: calc(var(--ui-radius) + 4px);
+  box-shadow: var(--ui-shadow-xs);
+}
+.ui .ui-card > * { margin-inline: 0; }
+.ui .ui-card-header {
+  display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 0.25rem 1rem;
+  padding: 0 1.25rem; margin: 0;
+}
+.ui .ui-card-title { grid-column: 1; margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+.ui .ui-card-description { grid-column: 1; margin: 0; font-size: 0.8125rem; color: var(--ui-muted-foreground); }
+.ui .ui-card-action { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+.ui .ui-card-content { padding: 0 1.25rem; }
+.ui .ui-card-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+  padding: 1rem 1.25rem 0; margin: 0; border-top: 1px solid var(--ui-border);
+}
+.ui .ui-card-flush { padding-bottom: 0; overflow: hidden; }
+.ui #table-card-main { padding-top: 0; gap: 0; }
+.ui .ui-card-flush .ui-card-footer { padding-bottom: 1rem; background: var(--ui-muted); }
+
+/* ───────── 배지 ───────── */
+.ui .ui-badge, .ui .settings-badge {
+  display: inline-flex; align-items: center; gap: 0.25rem; height: 1.375rem; padding: 0 0.5rem;
+  border: 1px solid var(--ui-border); border-radius: 999px; background: transparent;
+  color: var(--ui-muted-foreground); font-size: 0.75rem; font-weight: 500; white-space: nowrap;
+}
+
+/* ───────── 버튼 ───────── */
+.ui .btn, .ui .refresh-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+  height: 2.25rem; padding: 0 0.875rem;
+  border: 1px solid var(--ui-border); border-radius: calc(var(--ui-radius) - 2px);
+  background: var(--ui-card); color: var(--ui-foreground);
+  font: inherit; font-size: 0.875rem; font-weight: 500; white-space: nowrap;
+  box-shadow: var(--ui-shadow-xs); cursor: pointer;
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.ui .btn:hover, .ui .refresh-btn:hover { background: var(--ui-muted); }
+.ui .btn:focus-visible, .ui .refresh-btn:focus-visible { outline: none; border-color: var(--ui-primary); box-shadow: 0 0 0 3px var(--ui-ring); }
+.ui .btn:disabled, .ui .refresh-btn:disabled { opacity: 0.5; pointer-events: none; }
+.ui .btn-primary { background: var(--ui-primary); border-color: var(--ui-primary); color: var(--ui-primary-foreground); }
+.ui .btn-primary:hover { background: color-mix(in oklch, var(--ui-primary) 90%, black); }
+.ui .refresh-btn { height: 2rem; padding: 0 0.625rem; border-color: transparent; background: transparent; box-shadow: none; color: var(--ui-muted-foreground); }
+.ui .refresh-btn:hover { color: var(--ui-foreground); }
+/* 버튼 아이콘은 ::before로 그림 — JS가 버튼 글자(textContent)를 바꿔도 지워지지 않음 */
+.ui [data-ui-icon]::before {
+  content: ""; flex: none; width: 1rem; height: 1rem; background: currentColor;
+  -webkit-mask: var(--ui-icon) center / contain no-repeat; mask: var(--ui-icon) center / contain no-repeat;
+}
+.ui [data-ui-icon="refresh"] { --ui-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'/><path d='M21 3v5h-5'/><path d='M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16'/><path d='M8 16H3v5'/></svg>"); }
+.ui [data-ui-icon="logout"] { --ui-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><path d='m16 17 5-5-5-5'/><path d='M21 12H9'/></svg>"); }
+.ui [data-ui-icon="sheet"] { --ui-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><path d='M3 9h18M3 15h18M9 9v12'/></svg>"); }
+.ui [data-ui-icon="folder-down"] { --ui-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z'/><path d='M12 10v6'/><path d='m15 13-3 3-3-3'/></svg>"); }
+.ui [data-ui-icon="history"] { --ui-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/></svg>"); }
+.ui [data-ui-icon="plus"] { --ui-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14M12 5v14'/></svg>"); }
+.ui .ui-btn-sm { height: 2rem; padding: 0 0.75rem; font-size: 0.8125rem; }
+
+/* ───────── 입력 ───────── */
+.ui .ui-input, .ui .login-input, .ui .compose-input,
+.ui .toolbar select, .ui .toolbar input[type="text"],
+.ui #session-count-input, .ui #flag-caution-input, .ui #flag-alert-input, .ui #flag-issue-input,
+.ui #upload-company-input {
+  box-sizing: border-box; height: 2.25rem; width: 100%; min-width: 0; padding: 0 0.75rem; margin: 0;
+  border: 1px solid var(--ui-input); border-radius: calc(var(--ui-radius) - 2px);
+  background: var(--ui-card); color: var(--ui-foreground);
+  font: inherit; font-size: 0.875rem; box-shadow: var(--ui-shadow-xs);
+  transition: border-color .15s, box-shadow .15s;
+}
+.ui .ui-input:focus, .ui .login-input:focus, .ui .compose-input:focus,
+.ui .toolbar select:focus, .ui .toolbar input:focus,
+.ui .settings-actions input:focus, .ui #upload-company-input:focus {
+  outline: none; border-color: var(--ui-primary); box-shadow: 0 0 0 3px var(--ui-ring);
+}
+.ui .ui-field { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
+.ui .ui-label { font-size: 0.8125rem; font-weight: 500; color: var(--ui-foreground); }
+.ui .ui-field-hint { font-size: 0.75rem; color: var(--ui-muted-foreground); }
+.ui .ui-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.75rem 1rem; align-items: end; }
+.ui .ui-form-grid .ui-field-wide { grid-column: span 2; }
+.ui .settings-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; margin: 0; padding: 0 1.25rem; }
+.ui .settings-actions .ui-field { width: 7.5rem; }
+
+/* ───────── 표 ───────── */
+/* 취합현황 표(#main-table)는 기존 CSS의 높이 제한·머리글 고정을 그대로 씀 */
+.ui .ui-table-wrap-auto { max-height: none; }
+.ui .ui-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.ui .ui-table th {
+  text-transform: none; letter-spacing: 0;
+  height: 2.5rem; padding: 0 0.75rem; text-align: left; white-space: nowrap;
+  background: var(--ui-muted); color: var(--ui-muted-foreground);
+  font-size: 0.75rem; font-weight: 500; border-bottom: 1px solid var(--ui-border);
+}
+.ui .ui-table td { height: auto; padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--ui-border); vertical-align: middle; }
+.ui .ui-table tbody tr:last-child td { border-bottom: 0; }
+.ui .ui-table tbody tr:hover td { background: color-mix(in oklch, var(--ui-muted) 60%, transparent); }
+.ui .ui-table th:first-child, .ui .ui-table td:first-child { padding-left: 1.25rem; }
+.ui .ui-table th:last-child, .ui .ui-table td:last-child { padding-right: 1.25rem; }
+.ui .ui-table .empty-row td { padding: 2rem 1rem; text-align: center; color: var(--ui-muted-foreground); }
+.ui .ui-scroll-340 { max-height: 21.25rem; }
+
+/* ───────── 목록 ───────── */
+.ui .ui-card > .side-list { margin: 0; padding: 0 1.25rem; gap: 0; }
+
+/* ───────── 대시보드 (JS가 그리는 카드) — 모서리·그림자·제목만 맞춤 ───────── */
+.ui .stat-card, .ui .chart-card, .ui .mini-card { border-radius: calc(var(--ui-radius) + 4px); box-shadow: var(--ui-shadow-xs); }
+.ui .mini-card h3, .ui .chart-head h3 { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+.ui .stats-grid, .ui .chart-grid, .ui .main-grid { margin-bottom: 0; }
+
+/* ───────── 툴바 (취합현황 / 자료 제출) ───────── */
+.ui .toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0;
+  padding: 0.75rem; background: var(--ui-card); border: 1px solid var(--ui-border);
+  border-radius: calc(var(--ui-radius) + 4px); box-shadow: var(--ui-shadow-xs);
+}
+.ui .toolbar-search { position: relative; flex: 1 1 16rem; min-width: 12rem; }
+.ui .toolbar-search .i { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--ui-muted-foreground); pointer-events: none; }
+/* styles.css가 #search-input에 padding을 id로 지정해서 id로 덮어씀 */
+.ui #search-input { padding-left: 2.25rem; }
+.ui .toolbar-filters, .ui .toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.ui .toolbar-filters select, .ui .toolbar-actions select { width: auto; min-width: 7.5rem; }
+.ui .toolbar-actions { margin-left: auto; }
+
+/* ───────── 알림 (드라이브 이름 확인) ───────── */
+.ui .naming-card {
+  display: flex; flex-direction: column; gap: 0.75rem; margin: 0; padding: 1rem 1.25rem;
+  border: 1px solid color-mix(in oklch, var(--ui-warning) 35%, transparent);
+  border-radius: calc(var(--ui-radius) + 4px); background: var(--ui-warning-soft); color: var(--ui-foreground);
+}
+.ui .naming-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.ui .naming-title { display: flex; align-items: flex-start; gap: 0.625rem; }
+.ui .naming-title > .i { margin-top: 0.15rem; color: var(--ui-warning); }
+.ui .naming-title strong { display: block; font-weight: 600; color: var(--ui-warning); }
+.ui .naming-summary { display: block; font-size: 0.8125rem; color: var(--ui-muted-foreground); }
+
+/* ───────── 로그인 ───────── */
+.ui .login-screen {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem;
+  background:
+    radial-gradient(60rem 30rem at 50% -10%, var(--ui-primary-soft), transparent),
+    var(--ui-background);
+}
+.ui .login-card {
+  display: flex; flex-direction: column; gap: 1rem; width: 100%; max-width: 24rem; margin: 0;
+  padding: 1.75rem; background: var(--ui-card);
+  border: 1px solid var(--ui-border); border-radius: calc(var(--ui-radius) + 6px);
+  box-shadow: 0 10px 30px -10px oklch(0.2 0.03 260 / 0.2);
+}
+.ui .login-brand { display: flex; align-items: center; gap: 0.625rem; font-weight: 700; letter-spacing: 0.06em; }
+.ui .login-card h2 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+.ui .login-sub { margin: -0.5rem 0 0; font-size: 0.875rem; color: var(--ui-muted-foreground); }
+.ui .login-submit { width: 100%; height: 2.5rem; }
+.ui .login-error, .ui #upload-company-error {
+  margin: 0; padding: 0.625rem 0.75rem; border-radius: calc(var(--ui-radius) - 2px);
+  background: var(--ui-destructive-soft); color: var(--ui-destructive); font-size: 0.8125rem;
+}
+.ui .subtitle { margin: 0; font-size: 0.875rem; color: var(--ui-muted-foreground); }
+
+/* ───────── 자료 제출: 기업 선택 ───────── */
+.ui .ui-inline-form { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ui .ui-inline-form #upload-company-input { flex: 1 1 15rem; width: auto; }
+
+/* ───────── 모바일 ───────── */
+.ui .ui-nav-toggle { position: absolute; opacity: 0; pointer-events: none; }
+.ui .ui-nav-overlay { display: none; }
+@media (max-width: 900px) {
+  .ui .layout { grid-template-columns: minmax(0, 1fr); }
+  .ui .sidebar {
+    position: fixed; inset: 0 auto 0 0; z-index: 40; width: min(18rem, 85vw); height: 100dvh;
+    transform: translateX(-100%); transition: transform .2s ease;
+  }
+  .ui .ui-nav-toggle:checked ~ .layout .sidebar { transform: none; box-shadow: 0 0 40px oklch(0 0 0 / 0.3); }
+  .ui .ui-nav-toggle:checked ~ .layout .ui-nav-overlay { display: block; position: fixed; inset: 0; z-index: 30; background: oklch(0 0 0 / 0.4); }
+  .ui .ui-nav-trigger {
+    display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; margin-left: -0.375rem;
+    border-radius: calc(var(--ui-radius) - 2px); color: var(--ui-foreground); cursor: pointer;
+  }
+  .ui .ui-nav-trigger:hover { background: var(--ui-muted); }
+  .ui .page { padding: 0 1rem 2.5rem; }
+  .ui .topbar { margin: 0 -1rem; padding: 0.5rem 1rem; }
+  .ui .ui-page-title { font-size: 1.25rem; }
+  .ui .toolbar-actions { margin-left: 0; }
+  .ui .ui-form-grid .ui-field-wide { grid-column: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui *, .ui *::before, .ui *::after { transition: none !important; }
+}
+</style>
 </head>
-<body>
+<body class="ui">
+
+<!-- Lucide 아이콘 (https://lucide.dev, ISC) -->
+<svg xmlns="http://www.w3.org/2000/svg" hidden>
+  <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+</svg>
+
+<!-- ───────── 로그인 ───────── -->
 <div class="login-screen" id="login-screen" hidden>
   <form class="login-card" id="login-form">
-    <h2>멘토링 트래커 로그인</h2>
+    <div class="login-brand"><span class="brand-mark">P</span>PLAB</div>
+    <div>
+      <h2>멘토링 트래커 로그인</h2>
+    </div>
     <p class="login-sub">전달받은 아이디와 비밀번호를 입력해 주세요.</p>
-    <input class="login-input" id="login-username" type="text" placeholder="아이디" autocomplete="username" autocapitalize="off" autocorrect="off">
-    <input class="login-input" id="login-password" type="password" placeholder="비밀번호" autocomplete="current-password">
+    <div class="ui-field">
+      <label class="ui-label" for="login-username">아이디</label>
+      <input class="login-input" id="login-username" type="text" placeholder="아이디" autocomplete="username" autocapitalize="off" autocorrect="off">
+    </div>
+    <div class="ui-field">
+      <label class="ui-label" for="login-password">비밀번호</label>
+      <input class="login-input" id="login-password" type="password" placeholder="비밀번호" autocomplete="current-password">
+    </div>
     <button class="btn btn-primary login-submit" id="login-submit" type="submit">로그인</button>
-    <p class="login-error" id="login-error" hidden></p>
+    <p class="login-error" id="login-error" role="alert" hidden></p>
   </form>
 </div>
+
+<!-- 모바일 사이드바 열기/닫기 (CSS 전용 토글) -->
+<input class="ui-nav-toggle" type="checkbox" id="ui-nav-toggle" aria-hidden="true" tabindex="-1">
+
 <div class="layout">
-  <aside class="sidebar">
-    <div class="brand">PLAB</div>
+  <label class="ui-nav-overlay" for="ui-nav-toggle" aria-hidden="true"></label>
+
+  <!-- ───────── 사이드바 ───────── -->
+  <aside class="sidebar" aria-label="메뉴">
+    <div class="brand">
+      <span class="brand-mark">P</span>
+      <span>PLAB<span class="brand-sub">멘토링 트래커</span></span>
+    </div>
 
     <div class="nav-group">
       <div class="sidebar-title">운영</div>
-      <button class="nav-item active" type="button" id="nav-dashboard"><span class="icon"></span>대시보드</button>
-      <button class="nav-item" type="button" id="nav-program"><span class="icon"></span>프로그램</button>
-      <button class="nav-item" type="button" id="nav-collect"><span class="icon"></span>취합현황</button>
+      <button class="nav-item active" type="button" id="nav-dashboard"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-dashboard"/></svg></span>대시보드</button>
+      <button class="nav-item" type="button" id="nav-program"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg></span>프로그램</button>
+      <button class="nav-item" type="button" id="nav-collect"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-clipboard"/></svg></span>취합현황</button>
     </div>
 
     <div class="nav-group">
       <div class="sidebar-title">리포트</div>
-      <button class="nav-item" type="button" id="nav-report"><span class="icon"></span>보고서</button>
-      <button class="nav-item" type="button" id="nav-upload"><span class="icon"></span>자료 제출</button>
+      <button class="nav-item" type="button" id="nav-report"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span>보고서</button>
+      <button class="nav-item" type="button" id="nav-upload"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg></span>자료 제출</button>
     </div>
 
     <div class="nav-group" id="admin-nav-group">
       <div class="sidebar-title">관리</div>
-      <button class="nav-item" type="button" id="nav-users"><span class="icon"></span>사용자 권한</button>
-      <button class="nav-item" type="button" id="nav-settings"><span class="icon"></span>설정</button>
+      <button class="nav-item" type="button" id="nav-users"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span>사용자 권한</button>
+      <button class="nav-item" type="button" id="nav-settings"><span class="icon"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg></span>설정</button>
     </div>
 
     <div id="region-sidebar-section">
@@ -51,286 +421,359 @@
       <nav class="region-nav" id="region-nav" aria-label="권역별 바로가기"></nav>
     </div>
 
-    <div class="nav-group" style="margin-top: 18px;">
+    <div class="nav-group sidebar-step-group">
       <div class="sidebar-title">Step</div>
       <nav class="region-nav" id="round-nav" aria-label="회차별 바로가기"></nav>
     </div>
-    <div id="step-message" class="subtitle" style="display:none; margin-top:8px; font-weight:700; color:var(--primary-strong);"></div>
+    <div id="step-message" class="subtitle" style="display:none;"></div>
   </aside>
+
   <div class="page" id="app">
-  <header class="topbar">
-    <div class="topbar-main">
-      <h1>멘토링 트래커</h1>
+    <!-- ───────── 상단바 ───────── -->
+    <header class="topbar">
+      <div class="topbar-main">
+        <label class="ui-nav-trigger" for="ui-nav-toggle" aria-label="메뉴 열기"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></label>
+        <h1>멘토링 트래커</h1>
+      </div>
+      <div class="topbar-status">
+        <span class="role-badge" id="role-badge" hidden></span>
+        <span class="ui-status" aria-live="polite">
+          <span class="save-dot" id="save-dot"></span>
+          <span id="save-text">불러오는 중…</span>
+        </span>
+        <span class="ui-separator-v" aria-hidden="true"></span>
+        <button class="refresh-btn" id="refresh-btn" data-ui-icon="refresh" type="button">새로고침</button>
+        <button class="refresh-btn" id="logout-btn" data-ui-icon="logout" type="button" hidden>로그아웃</button>
+      </div>
+    </header>
+
+    <!-- ───────── 대시보드 (JS가 채움) ───────── -->
+    <div id="dashboard-view">
+      <section class="stats-grid" id="stats-grid" aria-label="요약 통계"></section>
+      <section class="chart-grid" id="dashboard-charts" aria-label="진행 현황 그래프"></section>
+      <section class="main-grid" id="quick-panels" aria-label="처리 필요 항목"></section>
     </div>
-    <div class="topbar-status">
-      <span class="role-badge" id="role-badge" hidden></span>
-      <span class="save-dot" id="save-dot"></span>
-      <span id="save-text">불러오는 중…</span>
-      <button class="refresh-btn" id="refresh-btn" type="button">↻ 새로고침</button>
-      <button class="refresh-btn" id="logout-btn" type="button" hidden>로그아웃</button>
-    </div>
-  </header>
 
-  <div id="dashboard-view">
-  <section class="stats-grid" id="stats-grid" aria-label="요약 통계"></section>
-
-  <section class="chart-grid" id="dashboard-charts" aria-label="진행 현황 그래프"></section>
-
-  <section class="main-grid" id="quick-panels" aria-label="처리 필요 항목"></section>
-  </div>
-
-  <section id="report-view" hidden aria-label="보고서">
-    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">보고서</h2>
-
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">회차별 비교</h3>
+    <!-- ───────── 보고서 ───────── -->
+    <section id="report-view" hidden aria-label="보고서">
+      <div class="ui-page-header">
+        <div>
+          <h2 class="ui-page-title">보고서</h2>
+          <p class="ui-page-description">회차·권역별로 진행 현황을 비교합니다.</p>
+        </div>
+        <button class="btn btn-ghost" id="export-report-btn" data-ui-icon="sheet" type="button">엑셀로 내보내기</button>
       </div>
-      <div class="table-wrap" style="max-height:none;">
-        <table>
-          <thead>
-            <tr>
-              <th>회차</th><th>기업 수</th><th>완료율</th><th>회차 진행률</th>
-              <th>수행계획서</th><th>결과보고서</th><th>문제</th><th>경고</th><th>주의</th>
-            </tr>
-          </thead>
-          <tbody id="round-comparison-body"></tbody>
-        </table>
-      </div>
+
+      <section class="settings-card ui-card ui-card-flush">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">회차별 비교</h3>
+          <p class="ui-card-description">회차마다 기업 수·완료율·서류 제출·이슈 현황</p>
+        </div>
+        <div class="table-wrap ui-table-wrap-auto">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th>회차</th><th>기업 수</th><th>완료율</th><th>회차 진행률</th>
+                <th>수행계획서</th><th>결과보고서</th><th>문제</th><th>경고</th><th>주의</th>
+              </tr>
+            </thead>
+            <tbody id="round-comparison-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="settings-card ui-card ui-card-flush">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">권역별 비교</h3>
+          <p class="ui-card-description">권역마다 기업 수·완료율·서류 제출·이슈 현황</p>
+        </div>
+        <div class="table-wrap ui-table-wrap-auto">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th>권역</th><th>기업 수</th><th>완료율</th><th>회차 진행률</th>
+                <th>수행계획서</th><th>결과보고서</th><th>문제</th><th>경고</th><th>주의</th>
+              </tr>
+            </thead>
+            <tbody id="region-comparison-body"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">권역별 비교</h3>
+    <!-- ───────── 프로그램 ───────── -->
+    <section id="program-view" hidden aria-label="프로그램">
+      <div class="ui-page-header">
+        <div>
+          <h2 class="ui-page-title">프로그램</h2>
+          <p class="ui-page-description">회차를 추가하고 일정·상태·드라이브 폴더를 관리합니다.</p>
+        </div>
       </div>
-      <div class="table-wrap" style="max-height:none;">
-        <table>
-          <thead>
-            <tr>
-              <th>권역</th><th>기업 수</th><th>완료율</th><th>회차 진행률</th>
-              <th>수행계획서</th><th>결과보고서</th><th>문제</th><th>경고</th><th>주의</th>
-            </tr>
-          </thead>
-          <tbody id="region-comparison-body"></tbody>
-        </table>
-      </div>
+
+      <section class="settings-card ui-card">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">회차 관리</h3>
+          <p class="ui-card-description">등록된 회차 목록</p>
+        </div>
+        <ul class="side-list" id="rounds-list"></ul>
+      </section>
+
+      <section class="settings-card ui-card">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">회차 추가</h3>
+          <p class="ui-card-description">새 회차의 기간·상태와 전용 드라이브 폴더를 입력하세요.</p>
+        </div>
+        <div class="ui-card-content">
+          <div class="ui-form-grid">
+            <div class="ui-field">
+              <label class="ui-label" for="new-round-name-input">회차 이름</label>
+              <input class="compose-input" id="new-round-name-input" type="text" placeholder="예: 3회차">
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="new-round-start-input">시작일</label>
+              <input class="compose-input" id="new-round-start-input" type="date">
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="new-round-end-input">종료일</label>
+              <input class="compose-input" id="new-round-end-input" type="date">
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="new-round-status-input">상태</label>
+              <select class="compose-input" id="new-round-status-input">
+                <option value="recruiting">모집중</option>
+                <option value="ongoing">진행중</option>
+                <option value="closed">종료</option>
+              </select>
+            </div>
+            <div class="ui-field ui-field-wide">
+              <label class="ui-label" for="new-round-drive-folder-input">드라이브 폴더 ID</label>
+              <input class="compose-input" id="new-round-drive-folder-input" type="text" placeholder="이 회차 전용 폴더 ID">
+            </div>
+          </div>
+        </div>
+        <div class="ui-card-footer">
+          <span class="ui-field-hint">추가한 회차는 사이드바 Step 목록에도 표시됩니다.</span>
+          <button id="add-round-btn" class="btn btn-primary" data-ui-icon="plus" type="button">추가</button>
+        </div>
+      </section>
     </section>
 
-    <button class="btn btn-ghost" id="export-report-btn" type="button">📊 엑셀로 내보내기</button>
-  </section>
-
-  <section id="program-view" hidden aria-label="프로그램">
-    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">프로그램</h2>
-
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">회차 관리</h3>
-      </div>
-      <ul class="side-list" id="rounds-list"></ul>
-    </section>
-
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">+ 회차 추가</h3>
-      </div>
-      <div class="settings-actions" style="align-items:flex-end; flex-wrap:wrap;">
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">회차 이름
-          <input class="compose-input" id="new-round-name-input" type="text" placeholder="예: 3회차" style="height:38px; width:120px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">시작일
-          <input class="compose-input" id="new-round-start-input" type="date" style="height:38px; width:150px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">종료일
-          <input class="compose-input" id="new-round-end-input" type="date" style="height:38px; width:150px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">상태
-          <select class="compose-input" id="new-round-status-input" style="height:38px; width:100px;">
-            <option value="recruiting">모집중</option>
-            <option value="ongoing">진행중</option>
-            <option value="closed">종료</option>
+    <!-- ───────── 취합현황 / 자료 제출 (표) ───────── -->
+    <div id="table-view" hidden>
+      <section class="toolbar" aria-label="검색 및 작업">
+        <div class="toolbar-search">
+          <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="search-input" type="text" placeholder="기업명으로 검색" autocomplete="off" aria-label="기업명으로 검색">
+        </div>
+        <div class="toolbar-filters">
+          <select id="filter-status" aria-label="완료 상태 필터">
+            <option value="all">전체 상태</option>
+            <option value="done">완료</option>
+            <option value="pending">미완료</option>
           </select>
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">드라이브 폴더 ID
-          <input class="compose-input" id="new-round-drive-folder-input" type="text" placeholder="이 회차 전용 폴더 ID" style="height:38px; width:220px;">
-        </label>
-        <button id="add-round-btn" class="btn btn-primary" type="button">추가</button>
-      </div>
-    </section>
-
-  </section>
-
-  <div id="table-view" hidden>
-  <section class="toolbar">
-    <div class="toolbar-search">
-      <input id="search-input" type="text" placeholder="기업명으로 검색" autocomplete="off">
-    </div>
-    <div class="toolbar-filters">
-      <select id="filter-status" aria-label="완료 상태 필터">
-        <option value="all">전체 상태</option>
-        <option value="done">완료</option>
-        <option value="pending">미완료</option>
-      </select>
-      <select id="filter-flag" aria-label="이슈 필터">
-        <option value="all">전체 이슈</option>
-        <option value="none">정상</option>
-        <option value="caution">주의</option>
-        <option value="alert">경고</option>
-        <option value="issue">문제</option>
-      </select>
-    </div>
-    <div class="toolbar-actions">
-    <select id="update-range-input" aria-label="업데이트 범위" title="드라이브 불러오기·취합현황 업데이트를 할 폴더NC 범위">
-      <option value="all">전체 범위</option>
-    </select>
-    <button class="btn btn-ghost" id="drive-sync-btn" type="button">📁 드라이브에서 불러오기</button>
-    <button class="btn btn-ghost" id="refresh-checklist-btn" type="button">🔄 취합현황 업데이트</button>
-    <button class="btn btn-ghost" id="export-excel-btn" type="button" hidden>📊 엑셀로 내보내기</button>
-    <button class="btn btn-ghost" id="change-log-btn" type="button" hidden>📜 변경 이력</button>
-    </div>
-  </section>
-
-  <section class="naming-card" id="naming-issues-card" hidden>
-    <div class="naming-head">
-      <div class="naming-title">
-        <strong>⚠ 드라이브 이름 확인 필요</strong>
-        <span class="naming-summary" id="naming-issues-summary"></span>
-      </div>
-      <button class="btn btn-ghost naming-toggle" id="naming-issues-toggle" type="button">자세히 보기</button>
-    </div>
-    <div class="naming-body" id="naming-issues-body" hidden></div>
-  </section>
-
-  <section class="settings-card" id="change-log-banner" hidden>
-    <div class="settings-header">
-      <h3 class="settings-title">변경 이력</h3>
-      <span class="settings-badge">관리자</span>
-    </div>
-    <p class="subtitle" style="margin:0 0 12px;">최근 200건까지 최신순으로 보여줘요. 누가·언제·무엇을 바꿨는지 확인할 수 있어요.</p>
-    <div class="table-wrap" style="max-height:340px;">
-      <table>
-        <thead>
-          <tr>
-            <th class="col-date">시간</th>
-            <th class="col-region">사용자</th>
-            <th class="col-doc">작업</th>
-            <th class="col-company">기업명</th>
-            <th class="col-remark">내용</th>
-          </tr>
-        </thead>
-        <tbody id="change-log-body"><tr class="empty-row"><td colspan="5">불러오는 중…</td></tr></tbody>
-      </table>
-    </div>
-    <div class="settings-actions">
-      <button id="change-log-refresh-btn" class="btn btn-ghost" type="button">새로고침</button>
-      <button id="change-log-close-btn" class="btn btn-ghost" type="button">닫기</button>
-    </div>
-  </section>
-
-  <p class="subtitle" id="upload-company-banner" style="margin:-8px 0 0;" hidden></p>
-
-  <section class="table-card" id="upload-company-gate" hidden>
-    <div style="padding:22px; display:flex; flex-direction:column; gap:10px; align-items:flex-start;">
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <input id="upload-company-input" list="upload-company-list" type="text" placeholder="기업명 검색" style="min-width:240px;">
-        <button id="upload-company-confirm-btn" class="btn btn-primary" type="button">확인</button>
-      </div>
-      <p class="subtitle" id="upload-company-error" style="margin:0; color:#b3432f;" hidden></p>
-    </div>
-  </section>
-  <datalist id="upload-company-list"></datalist>
-
-  <section class="table-card" id="table-card-main">
-    <div class="table-wrap">
-      <table id="main-table">
-        <thead id="table-head"></thead>
-        <tbody id="rows-body"></tbody>
-      </table>
-    </div>
-    <div class="table-footer">
-      <span id="row-count-label"></span>
-      <button class="btn btn-primary" id="add-row-btn" type="button">+ 멘티기업 추가</button>
-    </div>
-  </section>
-  </div>
-
-
-
-  <section id="settings-view" hidden aria-label="설정">
-    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">설정</h2>
-
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">회차 세션 수 설정</h3>
-        <span class="settings-badge">관리자</span>
-      </div>
-      <div class="settings-actions">
-        <input id="session-count-input" type="number" min="1" step="1">
-        <button id="session-count-save-btn" class="btn btn-primary" type="button">저장</button>
-      </div>
-    </section>
-
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">지연 기준일 설정</h3>
-        <span class="settings-badge">관리자</span>
-      </div>
-      <div class="settings-actions" style="align-items:flex-end;">
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">주의(일)
-          <input id="flag-caution-input" type="number" min="1" step="1" style="width:80px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">경고(일)
-          <input id="flag-alert-input" type="number" min="1" step="1" style="width:80px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">문제(일)
-          <input id="flag-issue-input" type="number" min="1" step="1" style="width:80px;">
-        </label>
-        <button id="flag-thresholds-save-btn" class="btn btn-primary" type="button">저장</button>
-      </div>
-    </section>
-
-
-  </section>
-
-
-  <section id="users-view" hidden aria-label="사용자 권한">
-    <h2 style="margin:0 0 18px; font-size:22px; letter-spacing:-0.03em;">사용자 권한</h2>
-
-    <section class="settings-card" style="margin-bottom:18px;">
-      <div class="settings-header">
-        <h3 class="settings-title">계정 목록</h3>
-      </div>
-      <ul class="side-list" id="users-list"></ul>
-    </section>
-
-    <section class="settings-card">
-      <div class="settings-header">
-        <h3 class="settings-title">+ 계정 추가</h3>
-      </div>
-      <div class="settings-actions" style="align-items:flex-end; flex-wrap:wrap;">
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">아이디
-          <input class="compose-input" id="new-user-username-input" type="text" style="height:38px; width:150px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">초기 비밀번호
-          <input class="compose-input" id="new-user-password-input" type="text" style="height:38px; width:150px;">
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">권한
-          <select class="compose-input" id="new-user-role-input" style="height:38px; width:100px;">
-            <option value="viewer">열람</option>
-            <option value="admin">관리자</option>
+          <select id="filter-flag" aria-label="이슈 필터">
+            <option value="all">전체 이슈</option>
+            <option value="none">정상</option>
+            <option value="caution">주의</option>
+            <option value="alert">경고</option>
+            <option value="issue">문제</option>
           </select>
-        </label>
-        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted);">담당 권역
-          <select class="compose-input" id="new-user-region-input" style="height:38px; width:120px;"></select>
-        </label>
-        <button id="add-user-btn" class="btn btn-primary" type="button">추가</button>
+        </div>
+        <div class="toolbar-actions">
+          <select id="update-range-input" aria-label="업데이트 범위" title="드라이브 불러오기·취합현황 업데이트를 할 폴더 범위">
+            <option value="all">전체 범위</option>
+          </select>
+          <button class="btn btn-ghost" id="drive-sync-btn" data-ui-icon="folder-down" type="button">드라이브에서 불러오기</button>
+          <button class="btn btn-ghost" id="refresh-checklist-btn" data-ui-icon="refresh" type="button">취합현황 업데이트</button>
+          <button class="btn btn-ghost" id="export-excel-btn" data-ui-icon="sheet" type="button" hidden>엑셀로 내보내기</button>
+          <button class="btn btn-ghost" id="change-log-btn" data-ui-icon="history" type="button" hidden>변경 이력</button>
+        </div>
+      </section>
+
+      <section class="naming-card" id="naming-issues-card" role="alert" hidden>
+        <div class="naming-head">
+          <div class="naming-title">
+            <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
+            <div>
+              <strong>드라이브 이름 확인 필요</strong>
+              <span class="naming-summary" id="naming-issues-summary"></span>
+            </div>
+          </div>
+          <button class="btn btn-ghost naming-toggle ui-btn-sm" id="naming-issues-toggle" type="button">자세히 보기</button>
+        </div>
+        <div class="naming-body" id="naming-issues-body" hidden></div>
+      </section>
+
+      <section class="settings-card ui-card ui-card-flush" id="change-log-banner" hidden>
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">변경 이력</h3>
+          <p class="subtitle ui-card-description">최근 200건까지 최신순으로 보여줘요. 누가·언제·무엇을 바꿨는지 확인할 수 있어요.</p>
+          <span class="settings-badge ui-card-action">관리자</span>
+        </div>
+        <div class="table-wrap ui-scroll-340">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th class="col-date">시간</th>
+                <th class="col-region">사용자</th>
+                <th class="col-doc">작업</th>
+                <th class="col-company">기업명</th>
+                <th class="col-remark">내용</th>
+              </tr>
+            </thead>
+            <tbody id="change-log-body"><tr class="empty-row"><td colspan="5">불러오는 중…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="settings-actions ui-card-footer">
+          <button id="change-log-refresh-btn" class="btn btn-ghost ui-btn-sm" data-ui-icon="refresh" type="button">새로고침</button>
+          <button id="change-log-close-btn" class="btn btn-ghost ui-btn-sm" type="button">닫기</button>
+        </div>
+      </section>
+
+      <p class="subtitle" id="upload-company-banner" hidden></p>
+
+      <section class="table-card ui-card" id="upload-company-gate" hidden>
+        <div class="ui-card-header">
+          <h3 class="ui-card-title">기업 선택</h3>
+          <p class="ui-card-description">자료를 제출할 멘티기업을 검색해서 선택하세요.</p>
+        </div>
+        <div class="ui-card-content ui-stack">
+          <div class="ui-inline-form">
+            <input id="upload-company-input" list="upload-company-list" type="text" placeholder="기업명 검색" aria-label="기업명 검색">
+            <button id="upload-company-confirm-btn" class="btn btn-primary" type="button">확인</button>
+          </div>
+          <p class="subtitle" id="upload-company-error" role="alert" hidden></p>
+        </div>
+      </section>
+      <datalist id="upload-company-list"></datalist>
+
+      <section class="table-card ui-card ui-card-flush" id="table-card-main">
+        <div class="table-wrap">
+          <table id="main-table">
+            <thead id="table-head"></thead>
+            <tbody id="rows-body"></tbody>
+          </table>
+        </div>
+        <div class="table-footer ui-card-footer">
+          <span id="row-count-label" class="subtitle"></span>
+          <button class="btn btn-primary" id="add-row-btn" data-ui-icon="plus" type="button">멘티기업 추가</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ───────── 설정 ───────── -->
+    <section id="settings-view" hidden aria-label="설정">
+      <div class="ui-page-header">
+        <div>
+          <h2 class="ui-page-title">설정</h2>
+          <p class="ui-page-description">회차 운영 기준을 정합니다. 관리자만 바꿀 수 있어요.</p>
+        </div>
       </div>
+
+      <section class="settings-card ui-card">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">회차 세션 수 설정</h3>
+          <p class="ui-card-description">한 회차에 진행하는 멘토링 세션 수</p>
+          <span class="settings-badge ui-card-action">관리자</span>
+        </div>
+        <div class="settings-actions">
+          <div class="ui-field">
+            <label class="ui-label" for="session-count-input">세션 수</label>
+            <input id="session-count-input" type="number" min="1" step="1">
+          </div>
+          <button id="session-count-save-btn" class="btn btn-primary" type="button">저장</button>
+        </div>
+      </section>
+
+      <section class="settings-card ui-card">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">지연 기준일 설정</h3>
+          <p class="ui-card-description">협약일 기준 며칠이 지나면 주의·경고·문제로 표시할지 정합니다.</p>
+          <span class="settings-badge ui-card-action">관리자</span>
+        </div>
+        <div class="settings-actions">
+          <div class="ui-field">
+            <label class="ui-label" for="flag-caution-input">주의(일)</label>
+            <input id="flag-caution-input" type="number" min="1" step="1">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="flag-alert-input">경고(일)</label>
+            <input id="flag-alert-input" type="number" min="1" step="1">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="flag-issue-input">문제(일)</label>
+            <input id="flag-issue-input" type="number" min="1" step="1">
+          </div>
+          <button id="flag-thresholds-save-btn" class="btn btn-primary" type="button">저장</button>
+        </div>
+      </section>
     </section>
-  </section>
+
+    <!-- ───────── 사용자 권한 ───────── -->
+    <section id="users-view" hidden aria-label="사용자 권한">
+      <div class="ui-page-header">
+        <div>
+          <h2 class="ui-page-title">사용자 권한</h2>
+          <p class="ui-page-description">계정을 추가하고 권한·담당 권역을 정합니다.</p>
+        </div>
+      </div>
+
+      <section class="settings-card ui-card">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">계정 목록</h3>
+          <p class="ui-card-description">등록된 계정과 권한</p>
+        </div>
+        <ul class="side-list" id="users-list"></ul>
+      </section>
+
+      <section class="settings-card ui-card">
+        <div class="settings-header ui-card-header">
+          <h3 class="settings-title ui-card-title">계정 추가</h3>
+          <p class="ui-card-description">초기 비밀번호는 사용자에게 따로 전달하세요.</p>
+        </div>
+        <div class="ui-card-content">
+          <div class="ui-form-grid">
+            <div class="ui-field">
+              <label class="ui-label" for="new-user-username-input">아이디</label>
+              <input class="compose-input" id="new-user-username-input" type="text" autocomplete="off">
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="new-user-password-input">초기 비밀번호</label>
+              <input class="compose-input" id="new-user-password-input" type="text" autocomplete="off">
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="new-user-role-input">권한</label>
+              <select class="compose-input" id="new-user-role-input">
+                <option value="viewer">열람</option>
+                <option value="admin">관리자</option>
+              </select>
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="new-user-region-input">담당 권역</label>
+              <select class="compose-input" id="new-user-region-input"></select>
+            </div>
+          </div>
+        </div>
+        <div class="ui-card-footer">
+          <span class="ui-field-hint">열람 권한은 담당 권역의 자료만 볼 수 있어요.</span>
+          <button id="add-user-btn" class="btn btn-primary" data-ui-icon="plus" type="button">추가</button>
+        </div>
+      </section>
+    </section>
   </div>
 </div>
 
 <datalist id="region-list"></datalist>
 
+<script>
+  // 모바일: 사이드바에서 메뉴를 고르면 사이드바를 닫음 (기존 JS와 무관한 UI 동작만)
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.sidebar .nav-item, .sidebar .region-nav > *')) {
+      var t = document.getElementById('ui-nav-toggle');
+      if (t) t.checked = false;
+    }
+  });
+</script>
 <script src="assets/js/state.js"></script>
 <script src="assets/js/table-view.js"></script>
 <script src="assets/js/dashboard-sessions-nav.js"></script>
