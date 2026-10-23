@@ -79,3 +79,11 @@ tbody td { height: 56px; }
 
 /* ---- 협약일자·담당자 이메일 열 숨김 (데이터와 엑셀 내보내기는 그대로, 화면에서만 감춤) ---- */
 th.col-date, td.col-date, th.col-email, td.col-email { display: none; }
+
+/* ---- 사이드바 권역·Step 선택 표시 (밝은 사이드바에서 흰 글씨가 안 보이던 문제) ---- */
+.region-nav-item.active { background: var(--primary-soft); border-color: transparent; color: var(--primary-strong); }
+.region-nav-item.active .region-nav-count { background: #fff; color: var(--primary-strong); }
+.region-nav-count { background: var(--panel-soft); }
+
+/* Step '오픈예정' 안내 문구 숨김 */
+#step-message { display: none !important; }
