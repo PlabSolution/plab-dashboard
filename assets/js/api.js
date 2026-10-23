@@ -2,11 +2,13 @@
   // 똑같은 POST/GET 틀(헤더, u/p 첨부, res.ok 체크, 캐시버스팅)을 반복하고 있어서 하나로
   // 모았어요. 실패 시 처리(alert 여부 등)는 호출부마다 달라서 그대로 각자 .then/.catch에 둬요.
   // 비밀번호 대신 로그인 때 받은 토큰(t)만 실어 보내요.
-  function apiPost(action, payload){
+  // opts.keepalive: 페이지를 닫는 중에 보내는 요청(예: 되돌리기 대기 중이던 삭제)이 끊기지 않게 해요.
+  function apiPost(action, payload, opts){
     var body = Object.assign({ action: action, t: AUTH.t }, payload || {});
     return fetch(apiUrl, {
       method:'POST',
       cache:'no-store',
+      keepalive: !!(opts && opts.keepalive),
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
     }).then(function(res){
@@ -238,11 +240,11 @@
     pendingSaves[id] = setTimeout(function(){ saveRow(id); }, 700);
   }
 
-  function deleteRowRemote(id){
+  function deleteRowRemote(id, opts){
     if(!isAdmin()) return;
     inFlight++;
     setSyncStatus('syncing');
-    apiPost('delete', { id: id })
+    apiPost('delete', { id: id }, opts)
       .catch(function(err){ console.error(err); })
       .finally(function(){
         inFlight--;
@@ -277,7 +279,8 @@
     }
     return fetchRows(full || force).then(function(rows){
       if(rows === null){ setSyncStatus('synced'); return; }
-      STATE.rows = rows;
+      // 되돌리기 대기 중인 삭제 행은 서버에는 아직 남아 있어서, 화면에 다시 나타나지 않게 빼요.
+      STATE.rows = rows.filter(function(r){ return !pendingRowDeletes[r.id]; });
       setSyncStatus('synced');
       renderTableHeader();
       renderAll();

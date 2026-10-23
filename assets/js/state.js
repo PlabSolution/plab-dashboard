@@ -24,6 +24,12 @@
   // MAX_SESSIONS는 서버 쪽 상한과 반드시 같은 값으로 맞춰야 해요 (설정 화면의 입력 상한으로도 써요).
   var MAX_SESSIONS = 12;
   // 업로드현황에서 체크하는 항목들. 취합현황의 1~N회차/계획서/보고서와 1:1로 대응돼요.
+  // "2회차" < "10회차"처럼 글자 속 숫자를 숫자로 비교해요. 그냥 .sort()는 글자 순서라
+  // "10회차"가 "2회차"보다 앞에 왔어요.
+  function naturalCompare(a, b){
+    return String(a == null ? '' : a).localeCompare(String(b == null ? '' : b), 'ko', { numeric: true });
+  }
+
   function uploadFieldNames(count){
     var arr = [];
     for(var n=1; n<=count; n++) arr.push('upSession' + n);
@@ -43,8 +49,10 @@
   var apiUrl = null;
   var pendingSaves = {};
   var inFlight = 0;
-  var pendingDeleteId = null;
-  var pendingDeleteTimer = null;
+  // 기업 삭제는 바로 서버로 보내지 않고 ROW_DELETE_UNDO_MS 동안 "되돌리기"를 받을 수 있게
+  // 기다려요. { id: { row, index, timer } } — 이 동안엔 폴링으로 받아온 행에서도 빼요(api.js).
+  var ROW_DELETE_UNDO_MS = 6000;
+  var pendingRowDeletes = {};
 
   // ── 로그인/권한 상태 ─────────────────────────────────────────────
   // 계정별 아이디·비밀번호·권한은 apps-script-code.gs의 USERS 목록에서 관리해요.

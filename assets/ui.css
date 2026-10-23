@@ -549,3 +549,70 @@ body.ui {
 }
 .ui .ui-dialog-footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.25rem; }
 .ui .ui-dialog .compose-input { height: 2.25rem; padding: 0 0.75rem; font-size: 0.875rem; }
+
+/* ───────── 알림 (shadcn Sonner 모양) ───────── */
+.ui .ui-toaster {
+  position: fixed; right: 1rem; bottom: 1rem; z-index: 200;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;
+  width: min(24rem, calc(100vw - 2rem)); pointer-events: none;
+}
+.ui .ui-toast {
+  pointer-events: auto; display: flex; align-items: flex-start; gap: 0.625rem; width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 0.875rem; border: 1px solid var(--ui-border); border-radius: var(--ui-radius);
+  background: var(--ui-card); color: var(--ui-foreground); font-size: 0.875rem; line-height: 1.45;
+  box-shadow: 0 10px 30px -10px rgba(31, 36, 55, 0.25);
+  animation: ui-toast-in .18s ease-out;
+}
+.ui .ui-toast.is-leaving { animation: ui-toast-out .18s ease-in forwards; }
+@keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ui-toast-out { to { opacity: 0; transform: translateY(8px); } }
+.ui .ui-toast-icon { flex: none; width: 1.125rem; height: 1.125rem; margin-top: 0.0625rem; background: currentColor;
+  -webkit-mask: var(--ui-toast-icon) center / contain no-repeat; mask: var(--ui-toast-icon) center / contain no-repeat; }
+.ui .ui-toast.is-success .ui-toast-icon { color: var(--success, #0ca678); --ui-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='m9 12 2 2 4-4'/></svg>"); }
+.ui .ui-toast.is-error .ui-toast-icon { color: var(--ui-destructive); --ui-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='m15 9-6 6M9 9l6 6'/></svg>"); }
+.ui .ui-toast.is-warning .ui-toast-icon { color: var(--ui-warning); --ui-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/><path d='M12 9v4M12 17h.01'/></svg>"); }
+.ui .ui-toast.is-info .ui-toast-icon { color: var(--ui-primary); --ui-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M12 16v-4M12 8h.01'/></svg>"); }
+.ui .ui-toast.is-error { border-color: color-mix(in srgb, var(--ui-destructive) 30%, var(--ui-border)); }
+.ui .ui-toast-text { flex: 1; min-width: 0; word-break: keep-all; overflow-wrap: anywhere; }
+.ui .ui-toast-action {
+  flex: none; height: 1.75rem; padding: 0 0.625rem; border: 0; border-radius: calc(var(--ui-radius) - 3px);
+  background: var(--ui-foreground); color: var(--ui-card); font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.ui .ui-toast-action:hover { opacity: 0.9; }
+.ui .ui-toast-close {
+  flex: none; width: 1.5rem; height: 1.5rem; margin: -0.125rem -0.125rem 0 0; padding: 0; border: 0; border-radius: 0.375rem;
+  background: transparent; color: var(--ui-muted-foreground); cursor: pointer; position: relative;
+}
+.ui .ui-toast-close::before, .ui .ui-toast-close::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 0.75rem; height: 1.5px; background: currentColor; border-radius: 1px;
+}
+.ui .ui-toast-close::before { transform: translate(-50%, -50%) rotate(45deg); }
+.ui .ui-toast-close::after { transform: translate(-50%, -50%) rotate(-45deg); }
+.ui .ui-toast-close:hover { background: var(--ui-muted); color: var(--ui-foreground); }
+.ui .ui-toast-action:focus-visible, .ui .ui-toast-close:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ui-ring); }
+
+/* 확인 창의 위험한 작업 버튼 */
+.ui .btn.ui-btn-danger { background: var(--ui-destructive); border-color: var(--ui-destructive); color: #fff; }
+.ui .btn.ui-btn-danger:hover { background: color-mix(in srgb, var(--ui-destructive) 88%, black); }
+
+/* ───────── 정렬 머리글 ───────── */
+.ui #main-table th.sortable-th { white-space: nowrap; }
+.ui #main-table th.sortable-th:hover { color: var(--ui-foreground); background: color-mix(in srgb, var(--ui-muted) 60%, var(--ui-border)); }
+.ui #main-table th.sortable-th:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: -2px; }
+.ui #main-table th.sortable-th.is-sorted { color: var(--ui-primary); }
+.ui .sort-indicator { display: inline-block; min-width: 0.625rem; }
+
+/* ───────── 모바일 권역·Step 필터 ───────── */
+.ui .ui-mobile-filters { display: none; }
+@media (max-width: 900px) {
+  /* 필터가 쓰이는 화면(대시보드·취합현황·자료 제출)에서만 보여요 */
+  .ui #app:has(#dashboard-view:not([hidden])) .ui-mobile-filters,
+  .ui #app:has(#table-view:not([hidden])) .ui-mobile-filters {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.5rem;
+  }
+  .ui .ui-mobile-filters .compose-input { height: 2.5rem; }
+  .ui .ui-toaster { right: 0.75rem; left: 0.75rem; bottom: 0.75rem; width: auto; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui .ui-toast, .ui .ui-toast.is-leaving { animation: none; }
+}
