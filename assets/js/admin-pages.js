@@ -68,7 +68,7 @@
 
   function renderRoundsList(){
     if(!roundsListEl) return;
-    var list = STATE.rounds.slice().sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||'')); });
+    var list = STATE.rounds.slice().sort(function(a,b){ return naturalCompare(a.name, b.name); });
     if(!list.length){
       roundsListEl.innerHTML = '<li class="side-item ui-list-empty"><span>등록된 회차가 없어요. 아래에서 회차를 추가해 주세요.</span></li>';
       return;

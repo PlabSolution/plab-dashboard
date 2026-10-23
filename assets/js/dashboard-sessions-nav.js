@@ -57,7 +57,7 @@
 
     var roundCounts = {};
     rows.forEach(function(r){ var k = r.round || DEFAULT_ROUND; roundCounts[k] = (roundCounts[k] || 0) + 1; });
-    var roundKeys = Object.keys(roundCounts).sort();
+    var roundKeys = Object.keys(roundCounts).sort(naturalCompare);
     var roundItems = roundKeys.length
       ? roundKeys.map(function(k){
           var stepNum = String(k).replace(/[^0-9]/g, '');
@@ -121,7 +121,7 @@
     var allRounds = ROUND_PRESETS.slice();
     usedRounds.forEach(function(r){ if(allRounds.indexOf(r) === -1) allRounds.push(r); });
     STATE.rounds.forEach(function(r){ if(r.name && allRounds.indexOf(r.name) === -1) allRounds.push(r.name); });
-    allRounds.sort();
+    allRounds.sort(naturalCompare);
     return allRounds.map(function(name){
       return { name: name, rows: STATE.rows.filter(function(r){ return (r.round || DEFAULT_ROUND) === name; }) };
     });
@@ -148,6 +148,16 @@
     regionComparisonBodyEl.innerHTML = regionGroups.length
       ? regionGroups.map(function(g){ return comparisonRowHTML(g.name, g.rows); }).join('')
       : '<tr class="empty-row"><td colspan="9">표시할 권역이 없어요.</td></tr>';
+  }
+
+  // 모바일(사이드바가 메뉴 속에 숨는 화면)에서 권역·Step을 바로 고를 수 있는 선택칸.
+  // 사이드바와 같은 목록·개수를 그대로 써요(값을 바꾸면 events-init.js가 같은 필터를 바꿔요).
+  function renderMobileFilter(selectId, items, current){
+    var sel = document.getElementById(selectId);
+    if(!sel) return;
+    sel.innerHTML = items.map(function(it){
+      return '<option value="' + escapeHtml(it.key) + '"' + (it.key === current ? ' selected' : '') + '>' + escapeHtml(it.label) + ' (' + it.count + ')</option>';
+    }).join('');
   }
 
   function buildNavHTML(items, activeKey, dataAttr){
@@ -182,7 +192,7 @@
     used.forEach(function(r){ if(all.indexOf(r) === -1) all.push(r); });
     // 회차 마스터(프로그램 탭에서 관리)에만 있고 아직 기업이 하나도 없는 회차도 미리 보이게 해요.
     STATE.rounds.forEach(function(r){ if(r.name && all.indexOf(r.name) === -1) all.push(r.name); });
-    all.sort(); // "1회차","2회차"... 순서대로 (문자열 정렬이라 10회차 이상이면 따로 손봐야 할 수 있어요)
+    all.sort(naturalCompare); // "1회차","2회차"…"10회차" 순서대로 (글자 속 숫자를 숫자로 비교)
     if(filters.round !== 'all' && all.indexOf(filters.round) === -1) filters.round = 'all';
     return all;
   }
@@ -206,6 +216,7 @@
     var items = [{ key:'all', label:'전체', count: baseRows.length }]
       .concat(all.map(function(r){ return { key:r, label:r, count: counts[r] || 0 }; }));
     regionNavEl.innerHTML = buildNavHTML(items, current, 'region');
+    renderMobileFilter('m-filter-region', items, current);
   }
 
   function renderRoundNav(){
@@ -224,6 +235,7 @@
         return { key:r, label:label, count: counts[r] || 0 };
       }));
     roundNavEl.innerHTML = buildNavHTML(items, current, 'round');
+    renderMobileFilter('m-filter-round', items, current);
     if(!stepMessageEl) return;
     // 선택된 회차의 마스터 데이터(프로그램 탭에서 등록)에 시작일이 있으면 오픈예정 메시지를
     // 보여줘요 — 예전엔 "회차 번호가 2일 때만" 하드코딩이었는데, 이제 회차 무관하게 다 됨.

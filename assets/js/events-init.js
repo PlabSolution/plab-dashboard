@@ -208,6 +208,8 @@
     // 안 그러면 고르기 전 상태에서 눌러서 권역 전체 데이터가 그대로 새어나갈 수 있어요.
     if(exportExcelBtn) exportExcelBtn.hidden = uploadGated;
     if(regionSidebarSection) regionSidebarSection.hidden = scopedRegion;
+    var mRegionField = document.getElementById('m-region-field');
+    if(mRegionField) mRegionField.hidden = scopedRegion;
     roleBadge.hidden = false;
     roleBadge.textContent = roleLabel();
     logoutBtn.hidden = false;
@@ -247,6 +249,11 @@
       filters.q = searchInput.value.trim().toLowerCase();
       refreshFilteredViews();
     });
+    // 모바일 권역·Step 선택칸 — 사이드바 버튼과 같은 필터를 바꿔요.
+    var mFilterRegion = document.getElementById('m-filter-region');
+    var mFilterRound = document.getElementById('m-filter-round');
+    if(mFilterRegion) mFilterRegion.addEventListener('change', function(){ filters.region = mFilterRegion.value; refreshFilteredViews(); });
+    if(mFilterRound) mFilterRound.addEventListener('change', function(){ filters.round = mFilterRound.value; refreshFilteredViews(); });
     regionNavEl.addEventListener('click', function(e){
       var btn = e.target.closest('.region-nav-item');
       if(!btn) return;
@@ -449,24 +456,25 @@
       var alertDays = parseInt(flagAlertInput.value, 10);
       var issue = parseInt(flagIssueInput.value, 10);
       if(!caution || !alertDays || !issue || caution < 1 || !(caution < alertDays && alertDays < issue)){
-        alert('주의 < 경고 < 문제 순서로, 1 이상의 정수로 입력해주세요.');
+        uiToast('주의 < 경고 < 문제 순서로, 1 이상의 정수로 입력해주세요.', { type:'error' });
         return;
       }
       flagThresholdsSaveBtn.disabled = true;
       apiPost('setFlagThresholds', { value:{ caution:caution, alert:alertDays, issue:issue } })
         .then(function(data){
           if(!data || data.ok === false){
-            alert((data && data.message) || '지연 기준일 저장에 실패했어요.');
+            uiToast((data && data.message) || '지연 기준일 저장에 실패했어요.', { type:'error' });
             return;
           }
           STATE.flagThresholds = data.flagThresholds;
+          uiToast('지연 기준일을 저장했어요. 이슈 표시를 다시 계산해요.', { type:'success' });
           // 기준일이 바뀌면 모든 행의 이슈 표시가 다시 계산돼야 하니 새로고침해요
           // (회차 수 저장과 같은 패턴 — pollOnce가 normalizeRow를 다시 돌려요).
           return pollOnce(true);
         })
         .catch(function(err){
           console.error(err);
-          alert('지연 기준일 저장 중 문제가 생겼어요.');
+          uiToast('지연 기준일 저장 중 문제가 생겼어요.', { type:'error' });
         })
         .finally(function(){
           flagThresholdsSaveBtn.disabled = false;
@@ -475,7 +483,7 @@
     if(sessionCountSaveBtn) sessionCountSaveBtn.addEventListener('click', function(){
       var n = parseInt(sessionCountInput.value, 10);
       if(!n || n < 1 || n > MAX_SESSIONS){
-        alert('세션 수는 1~' + MAX_SESSIONS + ' 사이의 정수로 입력해주세요.');
+        uiToast('세션 수는 1~' + MAX_SESSIONS + ' 사이의 정수로 입력해주세요.', { type:'error' });
         return;
       }
       sessionCountSaveBtn.disabled = true;
@@ -484,16 +492,17 @@
       apiPost('setSessionCount', { value:n })
         .then(function(data){
           if(!data || data.ok === false){
-            alert((data && data.message) || '회차 수 저장에 실패했어요.');
+            uiToast((data && data.message) || '회차 수 저장에 실패했어요.', { type:'error' });
             return;
           }
           // 서버에 바로 반영되니, 새 회차 수에 맞춰 데이터를 다시 불러와요
           // (pollOnce가 표 머리글·본문을 새 회차 수에 맞게 다시 그려줘요).
+          uiToast('회차 세션 수를 ' + n + '로 저장했어요.', { type:'success' });
           return pollOnce(true);
         })
         .catch(function(err){
           console.error('[회차 설정] 실패:', err);
-          alert('회차 수 저장 중 문제가 생겼어요. 콘솔(F12)을 확인해 주세요.');
+          uiToast('회차 수 저장 중 문제가 생겼어요. 콘솔(F12)을 확인해 주세요.', { type:'error' });
         })
         .finally(function(){
           sessionCountSaveBtn.disabled = false;
@@ -510,15 +519,19 @@
           var li = saveBtn.closest('li');
           var role = li.querySelector('.user-role-select').value;
           var region = li.querySelector('.user-region-select').value;
-          if(!confirm(username + ' 계정의 권한을 저장할까요?')) return;
-          saveBtn.disabled = true;
-          apiPost('updateUserRole', { username:username, role:role, region:region })
-            .then(function(data){
-              if(!data || data.ok === false){ alert((data && data.message) || '저장에 실패했어요.'); return; }
-              renderUsersList(data.users || []);
-            })
-            .catch(function(err){ console.error('[사용자 권한] 저장 실패:', err); alert('저장 중 문제가 생겼어요.'); })
-            .finally(function(){ saveBtn.disabled = false; });
+          uiConfirm(username + ' 계정의 권한을 ' + (role === 'admin' ? '관리자' : '열람') + ' · ' + (region === 'all' ? '전체 권역' : region) + '(으)로 저장할까요?',
+            { title: '권한 저장', confirmLabel: '저장' }).then(function(ok){
+            if(!ok) return;
+            saveBtn.disabled = true;
+            apiPost('updateUserRole', { username:username, role:role, region:region })
+              .then(function(data){
+                if(!data || data.ok === false){ uiToast((data && data.message) || '저장에 실패했어요.', { type:'error' }); return; }
+                renderUsersList(data.users || []);
+                uiToast(username + ' 계정의 권한을 저장했어요.', { type:'success' });
+              })
+              .catch(function(err){ console.error('[사용자 권한] 저장 실패:', err); uiToast('저장 중 문제가 생겼어요.', { type:'error' }); })
+              .finally(function(){ saveBtn.disabled = false; });
+          });
           return;
         }
         var resetBtn = e.target.closest('.user-reset-pw-btn');
@@ -529,10 +542,10 @@
             resetBtn.disabled = true;
             apiPost('resetUserPassword', { username:username2, password:newPw })
               .then(function(data){
-                if(!data || data.ok === false){ alert((data && data.message) || '재설정에 실패했어요.'); return; }
-                alert('비밀번호를 재설정했어요.');
+                if(!data || data.ok === false){ uiToast((data && data.message) || '재설정에 실패했어요.', { type:'error' }); return; }
+                uiToast('비밀번호를 재설정했어요.', { type:'success' });
               })
-              .catch(function(err){ console.error('[사용자 권한] 재설정 실패:', err); alert('재설정 중 문제가 생겼어요.'); })
+              .catch(function(err){ console.error('[사용자 권한] 재설정 실패:', err); uiToast('재설정 중 문제가 생겼어요.', { type:'error' }); })
               .finally(function(){ resetBtn.disabled = false; });
           });
           return;
@@ -540,15 +553,19 @@
         var delBtn = e.target.closest('.user-delete-btn');
         if(delBtn){
           var username3 = delBtn.getAttribute('data-username');
-          if(!confirm(username3 + ' 계정을 삭제할까요? 되돌릴 수 없어요.')) return;
-          delBtn.disabled = true;
-          apiPost('deleteUser', { username:username3 })
-            .then(function(data){
-              if(!data || data.ok === false){ alert((data && data.message) || '삭제에 실패했어요.'); return; }
-              renderUsersList(data.users || []);
-            })
-            .catch(function(err){ console.error('[사용자 권한] 삭제 실패:', err); alert('삭제 중 문제가 생겼어요.'); })
-            .finally(function(){ delBtn.disabled = false; });
+          uiConfirm(username3 + ' 계정을 삭제할까요? 되돌릴 수 없어요.',
+            { title: '계정 삭제', confirmLabel: '삭제', danger: true }).then(function(ok){
+            if(!ok) return;
+            delBtn.disabled = true;
+            apiPost('deleteUser', { username:username3 })
+              .then(function(data){
+                if(!data || data.ok === false){ uiToast((data && data.message) || '삭제에 실패했어요.', { type:'error' }); return; }
+                renderUsersList(data.users || []);
+                uiToast(username3 + ' 계정을 삭제했어요.', { type:'success' });
+              })
+              .catch(function(err){ console.error('[사용자 권한] 삭제 실패:', err); uiToast('삭제 중 문제가 생겼어요.', { type:'error' }); })
+              .finally(function(){ delBtn.disabled = false; });
+          });
         }
       });
     }
@@ -558,19 +575,20 @@
       var password = newUserPasswordInput.value || '';
       var role = newUserRoleInput.value;
       var region = newUserRegionInput.value;
-      if(!username){ alert('아이디를 입력해주세요.'); return; }
-      if(password.length < 6){ alert('비밀번호는 6자 이상이어야 해요.'); return; }
+      if(!username){ uiToast('아이디를 입력해주세요.', { type:'error' }); return; }
+      if(password.length < 6){ uiToast('비밀번호는 6자 이상이어야 해요.', { type:'error' }); return; }
       addUserBtn.disabled = true;
       apiPost('addUser', { username:username, password:password, role:role, region:region })
         .then(function(data){
-          if(!data || data.ok === false){ alert((data && data.message) || '추가에 실패했어요.'); return; }
+          if(!data || data.ok === false){ uiToast((data && data.message) || '추가에 실패했어요.', { type:'error' }); return; }
           newUserUsernameInput.value = '';
           newUserPasswordInput.value = '';
           newUserRoleInput.value = 'viewer';
           newUserRegionInput.value = 'all';
           renderUsersList(data.users || []);
+          uiToast(username + ' 계정을 추가했어요. 초기 비밀번호는 사용자에게 따로 전달해 주세요.', { type:'success' });
         })
-        .catch(function(err){ console.error('[사용자 권한] 추가 실패:', err); alert('추가 중 문제가 생겼어요.'); })
+        .catch(function(err){ console.error('[사용자 권한] 추가 실패:', err); uiToast('추가 중 문제가 생겼어요.', { type:'error' }); })
         .finally(function(){ addUserBtn.disabled = false; });
     });
 
@@ -602,37 +620,43 @@
           saveBtn.disabled = true;
           apiPost('upsertRound', { round:round })
             .then(function(data){
-              if(!data || data.ok === false){ alert((data && data.message) || '저장에 실패했어요.'); return; }
+              if(!data || data.ok === false){ uiToast((data && data.message) || '저장에 실패했어요.', { type:'error' }); return; }
               STATE.rounds = data.rounds || [];
               renderRoundsList();
               renderRoundNav();
-              if(data.warning) alert(data.warning);
+              if(data.warning) uiToast(data.warning, { type:'warning' });
+              else uiToast((round.name || '회차') + ' 정보를 저장했어요.', { type:'success' });
             })
-            .catch(function(err){ console.error('[프로그램] 회차 저장 실패:', err); alert('저장 중 문제가 생겼어요.'); })
+            .catch(function(err){ console.error('[프로그램] 회차 저장 실패:', err); uiToast('저장 중 문제가 생겼어요.', { type:'error' }); })
             .finally(function(){ saveBtn.disabled = false; });
           return;
         }
         var delBtn = e.target.closest('.round-delete-btn');
         if(delBtn){
           var delId = delBtn.getAttribute('data-id');
-          if(!confirm('이 회차를 삭제할까요? 회차별 참여 기록(취합현황)은 그대로 남아요.')) return;
-          delBtn.disabled = true;
-          apiPost('deleteRound', { id:delId })
-            .then(function(data){
-              if(!data || data.ok === false){ alert((data && data.message) || '삭제에 실패했어요.'); return; }
-              STATE.rounds = data.rounds || [];
-              renderRoundsList();
-              renderRoundNav();
-            })
-            .catch(function(err){ console.error('[프로그램] 회차 삭제 실패:', err); alert('삭제 중 문제가 생겼어요.'); })
-            .finally(function(){ delBtn.disabled = false; });
+          var delRound = STATE.rounds.find(function(r){ return r.id === delId; });
+          uiConfirm((delRound && delRound.name ? delRound.name + ' 회차를' : '이 회차를') + ' 삭제할까요? 회차별 참여 기록(취합현황)은 그대로 남아요.',
+            { title: '회차 삭제', confirmLabel: '삭제', danger: true }).then(function(ok){
+            if(!ok) return;
+            delBtn.disabled = true;
+            apiPost('deleteRound', { id:delId })
+              .then(function(data){
+                if(!data || data.ok === false){ uiToast((data && data.message) || '삭제에 실패했어요.', { type:'error' }); return; }
+                STATE.rounds = data.rounds || [];
+                renderRoundsList();
+                renderRoundNav();
+                uiToast('회차를 삭제했어요.', { type:'success' });
+              })
+              .catch(function(err){ console.error('[프로그램] 회차 삭제 실패:', err); uiToast('삭제 중 문제가 생겼어요.', { type:'error' }); })
+              .finally(function(){ delBtn.disabled = false; });
+          });
         }
       });
     }
     if(addRoundBtn) addRoundBtn.addEventListener('click', function(){
       if(!isAdmin()) return;
       var name = (newRoundNameInput.value || '').trim();
-      if(!name){ alert('회차 이름을 입력해주세요.'); return; }
+      if(!name){ uiToast('회차 이름을 입력해주세요.', { type:'error' }); return; }
       var round = {
         name: name,
         startDate: newRoundStartInput.value,
@@ -643,7 +667,7 @@
       addRoundBtn.disabled = true;
       apiPost('upsertRound', { round:round })
         .then(function(data){
-          if(!data || data.ok === false){ alert((data && data.message) || '추가에 실패했어요.'); return; }
+          if(!data || data.ok === false){ uiToast((data && data.message) || '추가에 실패했어요.', { type:'error' }); return; }
           newRoundNameInput.value = '';
           newRoundStartInput.value = '';
           newRoundEndInput.value = '';
@@ -652,9 +676,10 @@
           STATE.rounds = data.rounds || [];
           renderRoundsList();
           renderRoundNav();
-          if(data.warning) alert(data.warning);
+          if(data.warning) uiToast(data.warning, { type:'warning' });
+          else uiToast(name + '를 추가했어요.', { type:'success' });
         })
-        .catch(function(err){ console.error('[프로그램] 회차 추가 실패:', err); alert('추가 중 문제가 생겼어요.'); })
+        .catch(function(err){ console.error('[프로그램] 회차 추가 실패:', err); uiToast('추가 중 문제가 생겼어요.', { type:'error' }); })
         .finally(function(){ addRoundBtn.disabled = false; });
     });
 

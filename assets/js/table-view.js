@@ -5,48 +5,74 @@
     return isNaN(n) ? null : n;
   }
 
+  // 정렬할 수 있는 열과 각 열의 비교 값. null(빈 칸 등)은 오름·내림 상관없이 항상 뒤로 보내요.
+  var FLAG_SEVERITY = { none: 0, caution: 1, alert: 2, issue: 3 };
+  var SORT_FIELDS = {
+    folderNc: { label: '폴더NC', value: function(r){ return folderNcSortValue(r.folderNc); } },
+    region:   { label: '권역', value: function(r){ return r.region || null; }, text: true },
+    company:  { label: '멘티기업', value: function(r){ return r.company || null; }, text: true },
+    progress: { label: '수행도', value: function(r){ return rowProgress(r).pct; } },
+    complete: { label: '완료', value: function(r){ return r.complete ? 1 : 0; } },
+    flag:     { label: '이슈', value: function(r){ return FLAG_SEVERITY[r.flag] || 0; } }
+  };
+
   function sortRows(rows){
-    if(!sortState.field) return rows;
-    var field = sortState.field;
+    var def = sortState.field && SORT_FIELDS[sortState.field];
+    if(!def) return rows;
     var dir = sortState.dir === 'desc' ? -1 : 1;
-    var withIndex = rows.map(function(r, i){ return { r: r, i: i }; });
+    var withIndex = rows.map(function(r, i){ return { r: r, i: i, v: def.value(r) }; });
     withIndex.sort(function(a, b){
-      var av = folderNcSortValue(a.r[field]);
-      var bv = folderNcSortValue(b.r[field]);
-      // 숫자로 못 읽는 값(빈 칸 등)은 항상 뒤로 보내요.
-      if(av === null && bv === null) return a.i - b.i;
-      if(av === null) return 1;
-      if(bv === null) return -1;
-      if(av !== bv) return (av - bv) * dir;
+      if(a.v === null && b.v === null) return a.i - b.i;
+      if(a.v === null) return 1;
+      if(b.v === null) return -1;
+      var c = def.text ? naturalCompare(a.v, b.v) : (a.v - b.v);
+      if(c !== 0) return c * dir;
       return a.i - b.i;
     });
     return withIndex.map(function(x){ return x.r; });
   }
 
   function updateSortIndicator(){
-    var indicator = document.getElementById('sort-indicator');
-    if(!indicator) return;
-    if(sortState.field !== 'folderNc'){ indicator.textContent = ''; return; }
-    indicator.textContent = sortState.dir === 'desc' ? '▼' : '▲';
+    var ths = document.querySelectorAll('#table-head .sortable-th');
+    for(var i = 0; i < ths.length; i++){
+      var th = ths[i];
+      var active = th.getAttribute('data-sort-field') === sortState.field;
+      var indicator = th.querySelector('.sort-indicator');
+      if(indicator) indicator.textContent = active ? (sortState.dir === 'desc' ? '▼' : '▲') : '';
+      th.setAttribute('aria-sort', active ? (sortState.dir === 'desc' ? 'descending' : 'ascending') : 'none');
+      th.classList.toggle('is-sorted', active);
+    }
   }
 
-  // 폴더NC 정렬 헤더는 탭을 바꿀 때마다 새로 그려지므로, 그릴 때마다 클릭 이벤트도 다시 걸어줘요.
+  // 같은 열을 누르면 오름차순 → 내림차순 → 정렬 해제 순서로 바뀌어요.
+  function toggleSort(field){
+    if(sortState.field !== field){ sortState.field = field; sortState.dir = 'asc'; }
+    else if(sortState.dir === 'asc'){ sortState.dir = 'desc'; }
+    else { sortState.field = null; sortState.dir = 'asc'; }
+    updateSortIndicator();
+    renderTable();
+  }
+
+  // 정렬 머리글은 탭을 바꿀 때마다 새로 그려지므로, 그릴 때마다 클릭·키보드 이벤트도 다시 걸어줘요.
   function bindSortHeader(){
-    var th = document.getElementById('th-folder-nc');
-    if(!th) return;
-    th.addEventListener('click', function(){
-      if(sortState.field === 'folderNc'){
-        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortState.field = 'folderNc';
-        sortState.dir = 'asc';
-      }
-      updateSortIndicator();
-      renderTable();
-    });
+    var ths = document.querySelectorAll('#table-head .sortable-th');
+    for(var i = 0; i < ths.length; i++){
+      (function(th){
+        var field = th.getAttribute('data-sort-field');
+        th.addEventListener('click', function(){ toggleSort(field); });
+        th.addEventListener('keydown', function(e){
+          if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleSort(field); }
+        });
+      })(ths[i]);
+    }
   }
 
-  var FOLDER_SORT_TH = '<th class="col-folder sortable-th" id="th-folder-nc" data-sort-field="folderNc">폴더NC<span class="sort-indicator" id="sort-indicator"></span></th>';
+  function sortTh(field, cls, extraAttrs){
+    return '<th class="' + cls + ' sortable-th" data-sort-field="' + field + '" tabindex="0" aria-sort="none"' +
+      (extraAttrs || '') + ' title="눌러서 정렬">' + SORT_FIELDS[field].label + '<span class="sort-indicator" aria-hidden="true"></span></th>';
+  }
+
+  var FOLDER_SORT_TH = sortTh('folderNc', 'col-folder', ' id="th-folder-nc"');
 
   function sessionHeaderCells(){
     var html = '';
@@ -58,11 +84,15 @@
 
   function renderTableHeader(){
     var headRow;
+    // 자료 제출 탭에 없는 열(수행도·이슈)로 정렬하던 중이면 정렬을 풀어요.
+    if(viewMode === 'upload' && (sortState.field === 'progress' || sortState.field === 'flag')){
+      sortState.field = null;
+    }
     if(viewMode === 'upload'){
       headRow =
         '<th class="col-date">협약일자</th>' + FOLDER_SORT_TH +
-        '<th class="col-region">권역</th>' +
-        '<th class="col-company sticky-col">멘티기업</th>' +
+        sortTh('region', 'col-region') +
+        sortTh('company', 'col-company sticky-col') +
         sessionHeaderCells() +
         '<th class="col-doc">수행계획서</th>' +
         '<th class="col-doc">결과보고서</th>' +
@@ -70,14 +100,14 @@
     } else {
       headRow =
         '<th class="col-date">협약일자</th>' + FOLDER_SORT_TH +
-        '<th class="col-region">권역</th>' +
-        '<th class="col-company sticky-col">멘티기업</th>' +
+        sortTh('region', 'col-region') +
+        sortTh('company', 'col-company sticky-col') +
         sessionHeaderCells() +
         '<th class="col-doc">수행계획서</th>' +
         '<th class="col-doc">결과보고서</th>' +
-        '<th class="col-progress">수행도</th>' +
-        '<th class="col-complete">완료</th>' +
-        '<th class="col-flag">이슈</th>' +
+        sortTh('progress', 'col-progress') +
+        sortTh('complete', 'col-complete') +
+        sortTh('flag', 'col-flag') +
         '<th class="col-remark">비고</th>' +
         '<th class="col-email">담당자 이메일</th>' +
         (isAdmin() ? '<th class="col-drive-link">폴더</th>' : '') +
@@ -209,7 +239,7 @@
       '<td>' + textCellHTML({ type:'text', field:'remark', value:r.remark, placeholder: '메모' }) + '</td>' +
       '<td class="col-email">' + textCellHTML({ type:'email', field:'contactEmail', value:r.contactEmail, placeholder:'담당자 이메일' }) + '</td>' +
       (admin ? '<td class="center">' + folderLinkHTML(r) + '</td>' : '') +
-      '<td class="center">' + (admin ? '<button type="button" class="delete-btn" data-action="delete" data-ui-icon="trash" title="두 번 누르면 삭제돼요">삭제</button>' : '') + '</td>' +
+      '<td class="center">' + (admin ? '<button type="button" class="delete-btn" data-action="delete" data-ui-icon="trash" title="삭제 (몇 초 동안 되돌릴 수 있어요)">삭제</button>' : '') + '</td>' +
     '</tr>';
   }
 
@@ -464,7 +494,7 @@
       });
     }).catch(function(err){
       console.error('[엑셀 내보내기] 실패:', err);
-      alert(err && err.message ? err.message : '엑셀 파일을 만드는 중 문제가 생겼어요.');
+      uiToast(err && err.message ? err.message : '엑셀 파일을 만드는 중 문제가 생겼어요.', { type:'error' });
     });
   }
 
@@ -526,7 +556,7 @@
       });
     }).catch(function(err){
       console.error('[보고서 내보내기] 실패:', err);
-      alert(err && err.message ? err.message : '엑셀 파일을 만드는 중 문제가 생겼어요.');
+      uiToast(err && err.message ? err.message : '엑셀 파일을 만드는 중 문제가 생겼어요.', { type:'error' });
     });
   }
 
@@ -539,7 +569,7 @@
     if(!listEl) return;
     var names = [];
     STATE.rows.forEach(function(r){ if(r.company && names.indexOf(r.company) === -1) names.push(r.company); });
-    names.sort();
+    names.sort(naturalCompare);
     listEl.innerHTML = names.map(function(n){ return '<option value="' + escapeHtml(n) + '">'; }).join('');
   }
 
@@ -676,27 +706,61 @@
     var delBtn = e.target.closest('[data-action="delete"]');
     if(delBtn){
       var trd = e.target.closest('tr');
-      var id = trd.getAttribute('data-id');
-      if(pendingDeleteId === id){
-        clearTimeout(pendingDeleteTimer);
-        var wasExample = STATE.rows.some(function(r){ return r.id === id && r.isExample; });
-        STATE.rows = STATE.rows.filter(function(r){ return r.id !== id; });
-        pendingDeleteId = null;
-        renderAll();
-        if(!wasExample) deleteRowRemote(id);
-      } else {
-        pendingDeleteId = id;
-        delBtn.textContent = '정말 삭제?';
-        delBtn.classList.add('confirm');
-        clearTimeout(pendingDeleteTimer);
-        pendingDeleteTimer = setTimeout(function(){
-          pendingDeleteId = null;
-          delBtn.textContent = '삭제';
-          delBtn.classList.remove('confirm');
-        }, 3500);
-      }
+      startRowDelete(trd.getAttribute('data-id'));
     }
   }
+
+  // ── 기업 삭제 + 되돌리기 ──────────────────────────────────────────────
+  // 예전엔 "삭제"를 두 번 눌러야 했고 지우면 끝이었어요. 이제 한 번 누르면 화면에서 바로
+  // 빠지고, 알림의 "되돌리기"를 ROW_DELETE_UNDO_MS 안에 누르면 원래 자리로 돌아와요.
+  // 그 시간이 지나야 서버에 삭제를 보내요.
+  function startRowDelete(id){
+    var index = -1;
+    for(var i = 0; i < STATE.rows.length; i++){ if(STATE.rows[i].id === id){ index = i; break; } }
+    if(index === -1) return;
+    var row = STATE.rows[index];
+    STATE.rows.splice(index, 1);
+    renderAll();
+    var label = row.company ? row.company : '이름 없는 기업';
+    if(row.isExample){
+      uiToast(label + ' 예시 행을 지웠어요.', { type:'info' });
+      return;
+    }
+    pendingRowDeletes[id] = {
+      row: row,
+      index: index,
+      timer: setTimeout(function(){ commitRowDelete(id); }, ROW_DELETE_UNDO_MS)
+    };
+    uiToast(label + '을(를) 삭제했어요.', {
+      type: 'info',
+      duration: ROW_DELETE_UNDO_MS,
+      action: { label: '되돌리기', onClick: function(){ undoRowDelete(id); } }
+    });
+  }
+
+  function undoRowDelete(id){
+    var entry = pendingRowDeletes[id];
+    if(!entry) return;
+    clearTimeout(entry.timer);
+    delete pendingRowDeletes[id];
+    STATE.rows.splice(Math.min(entry.index, STATE.rows.length), 0, entry.row);
+    renderAll();
+    uiToast((entry.row.company || '기업') + '을(를) 되돌렸어요.', { type:'success' });
+  }
+
+  // opts.keepalive: 페이지를 닫는 중에도 요청이 끝까지 가도록(pagehide에서 사용)
+  function commitRowDelete(id, opts){
+    var entry = pendingRowDeletes[id];
+    if(!entry) return;
+    clearTimeout(entry.timer);
+    delete pendingRowDeletes[id];
+    deleteRowRemote(id, opts);
+  }
+
+  // 되돌리기 대기 중에 탭을 닫거나 다른 페이지로 가면, 기다리던 삭제를 바로 보내요.
+  window.addEventListener('pagehide', function(){
+    Object.keys(pendingRowDeletes).forEach(function(id){ commitRowDelete(id, { keepalive: true }); });
+  });
 
   function onTableInput(e){
     if(!isAdmin()) return;
