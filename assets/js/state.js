@@ -180,7 +180,12 @@
       remark: r.remark || '', round: r.round || DEFAULT_ROUND,
       contactEmail: r.contactEmail || '', folderId: r.folderId || ''
     };
-    uploadFieldNames(n).forEach(function(f){ normalized[f] = !!r[f]; });
+    // 업로드 체크 여부와 함께 체크일(…At, "YYYY-MM-DD")도 보관해야 새로고침 뒤에도
+    // 자료 제출 표에 "09.30 등록"이 보여요. (예전엔 여기서 체크일을 버려서 클릭 직후에만 보였음)
+    uploadFieldNames(n).forEach(function(f){
+      normalized[f] = !!r[f];
+      normalized[f + 'At'] = r[f + 'At'] || '';
+    });
     return normalized;
   }
 
