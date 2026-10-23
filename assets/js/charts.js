@@ -5,8 +5,9 @@
   //  3) 이슈 분포 — 정상/주의/경고/문제 비율
   // 라이브러리 없이 HTML 막대로 그려요(가볍고, 표 화면과 같은 글꼴·색 체계).
 
-  var CHART_SERIES = '#2a78d6';
-  var STATUS_COLORS = { none: '#0ca30c', caution: '#fab219', alert: '#ec835a', issue: '#d03b3b' };
+  // 테마(plab-ops-theme.css)의 --primary·상태 색과 같은 값을 써서 표의 배지와 같은 색이 같은 뜻이 되게 해요.
+  var CHART_SERIES = 'var(--primary, #3b5bdb)';
+  var STATUS_COLORS = { none: '#0ca678', caution: '#f59f00', alert: '#e8590c', issue: '#e03131' };
   var STATUS_META = [
     { key: 'none', label: '정상', icon: '✓' },
     { key: 'caution', label: '주의', icon: '!' },
@@ -22,7 +23,9 @@
     var rows = STATE.rows || [];
     var total = rows.length;
     if(!total){
-      mount.innerHTML = '<div class="chart-card chart-wide"><div class="chart-empty">기업이 등록되면 그래프가 나타나요.</div></div>';
+      mount.innerHTML = '<div class="chart-card chart-wide"><div class="chart-empty ui-empty">' +
+        '<span class="ui-empty-icon" data-ui-icon="chart" aria-hidden="true"></span>' +
+        '<strong>아직 그래프로 보여줄 기업이 없어요</strong><span>기업이 등록되면 회차·권역·이슈 현황이 여기에 나타나요.</span></div></div>';
       return;
     }
     mount.innerHTML = sessionColumnsHTML(rows, total) + regionBarsHTML(rows) + issueStackHTML(rows, total);

@@ -120,7 +120,7 @@
   // 1~N회차·계획서·보고서·완료는 "드라이브에서 불러오기"로만 채워지는 값이라
   // 관리자를 포함해 누구도 직접 클릭해서 바꿀 수 없어요. 상태만 보여주는 정적 표시예요.
   function autoCellHTML(checked, isComplete){
-    return '<span class="toggle-view' + (isComplete ? ' complete' : '') + (checked ? ' on' : '') + '">' + (checked ? '✓' : '') + '</span>';
+    return '<span class="toggle-view' + (isComplete ? ' complete' : '') + (checked ? ' on' : '') + '" role="img" aria-label="' + (checked ? '완료' : '미완료') + '">' + (checked ? '✓' : '') + '</span>';
   }
 
   var FLAG_LABELS = { none:'정상', caution:'주의', alert:'경고', issue:'문제' };
@@ -185,8 +185,8 @@
   function folderLinkHTML(r){
     if(!r.folderId) return '<span class="folder-link-empty" title="드라이브에서 불러오기를 하면 자동으로 채워져요">-</span>';
     var url = 'https://drive.google.com/drive/folders/' + encodeURIComponent(r.folderId);
-    return '<a class="folder-link" href="' + url + '" target="_blank" rel="noopener noreferrer" title="' +
-      escapeHtml(r.company || '') + ' 드라이브 폴더 열기">📁</a>';
+    return '<a class="folder-link" data-ui-icon="folder" href="' + url + '" target="_blank" rel="noopener noreferrer" title="' +
+      escapeHtml(r.company || '') + ' 드라이브 폴더 열기"><span class="ui-sr-only">' + escapeHtml(r.company || '') + ' 드라이브 폴더 열기</span></a>';
   }
 
   function renderRowHTML(r){
@@ -209,7 +209,7 @@
       '<td>' + textCellHTML({ type:'text', field:'remark', value:r.remark, placeholder: '메모' }) + '</td>' +
       '<td class="col-email">' + textCellHTML({ type:'email', field:'contactEmail', value:r.contactEmail, placeholder:'담당자 이메일' }) + '</td>' +
       (admin ? '<td class="center">' + folderLinkHTML(r) + '</td>' : '') +
-      '<td class="center">' + (admin ? '<button type="button" class="delete-btn" data-action="delete">삭제</button>' : '') + '</td>' +
+      '<td class="center">' + (admin ? '<button type="button" class="delete-btn" data-action="delete" data-ui-icon="trash" title="두 번 누르면 삭제돼요">삭제</button>' : '') + '</td>' +
     '</tr>';
   }
 
@@ -549,8 +549,8 @@
     var show = viewMode === 'upload' && isRegionScopedViewer() && !!uploadCompanySelection;
     banner.hidden = !show;
     if(show){
-      banner.innerHTML = escapeHtml(uploadCompanySelection) + ' 기업의 업로드 현황이에요 · ' +
-        '<button type="button" id="upload-company-switch-btn" style="background:none;border:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font:inherit;">다른 기업 조회</button>';
+      banner.innerHTML = '<strong>' + escapeHtml(uploadCompanySelection) + '</strong> 기업의 업로드 현황이에요 · ' +
+        '<button type="button" id="upload-company-switch-btn" class="ui-link-btn">다른 기업 조회</button>';
     }
   }
 
@@ -605,10 +605,13 @@
     var filtered = sortRows(visibleRows());
     var colCount = viewMode === 'upload' ? (7 + STATE.sessionCount) : (12 + STATE.sessionCount + (isAdmin() ? 1 : 0));
     if(filtered.length === 0){
+      var noRows = STATE.rows.length === 0;
       rowsBody.innerHTML = '<tr class="empty-row"><td colspan="' + colCount + '">' +
-        (STATE.rows.length === 0
-          ? '아직 등록된 멘티기업이 없어요. 아래 “+ 멘티기업 추가” 버튼으로 시작해 보세요.'
-          : '조건에 맞는 멘티기업이 없어요.') +
+        '<div class="ui-empty">' +
+          '<span class="ui-empty-icon" data-ui-icon="' + (noRows ? 'inbox' : 'search') + '"></span>' +
+          '<strong>' + (noRows ? '아직 등록된 멘티기업이 없어요' : '조건에 맞는 멘티기업이 없어요') + '</strong>' +
+          '<span>' + (noRows ? '아래 “멘티기업 추가” 버튼으로 시작해 보세요.' : '검색어나 상태·이슈 필터, 사이드바의 권역·Step 선택을 바꿔 보세요.') + '</span>' +
+        '</div>' +
         '</td></tr>';
       return;
     }
