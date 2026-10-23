@@ -90,7 +90,7 @@
     }
     if(viewMode === 'upload'){
       headRow =
-        '<th class="col-date">협약일자</th>' + FOLDER_SORT_TH +
+        FOLDER_SORT_TH +
         sortTh('region', 'col-region') +
         sortTh('company', 'col-company sticky-col') +
         sessionHeaderCells() +
@@ -99,7 +99,7 @@
         '<th class="col-complete">완료</th>';
     } else {
       headRow =
-        '<th class="col-date">협약일자</th>' + FOLDER_SORT_TH +
+        FOLDER_SORT_TH +
         sortTh('region', 'col-region') +
         sortTh('company', 'col-company sticky-col') +
         sessionHeaderCells() +
@@ -109,7 +109,6 @@
         sortTh('complete', 'col-complete') +
         sortTh('flag', 'col-flag') +
         '<th class="col-remark">비고</th>' +
-        '<th class="col-email">담당자 이메일</th>' +
         (isAdmin() ? '<th class="col-drive-link">폴더</th>' : '') +
         '<th class="col-actions"></th>';
     }
@@ -222,8 +221,7 @@
   function renderRowHTML(r){
     var admin = isAdmin();
     return '' +
-    '<tr data-id="' + r.id + '" class="flag-' + r.flag + '">' +
-      '<td class="col-date">' + textCellHTML({ type:'date', field:'date', value:r.date }) + '</td>' +
+    '<tr data-id="' + escapeHtml(r.id) + '" class="flag-' + (FLAG_LABELS[r.flag] ? r.flag : 'none') + '">' +
       '<td>' + textCellHTML({ type:'text', field:'folderNc', value:r.folderNc, extraClass:'cell-narrow', inputmode:'numeric' }) + '</td>' +
       '<td>' + textCellHTML({ type:'text', field:'region', value:r.region, placeholder:'권역', list:'region-list' }) + '</td>' +
       '<td class="sticky-col company-cell">' +
@@ -237,7 +235,6 @@
       '<td class="center">' + autoCellHTML(r.complete, true) + '</td>' +
       '<td class="center">' + flagCellHTML(r) + '</td>' +
       '<td>' + textCellHTML({ type:'text', field:'remark', value:r.remark, placeholder: '메모' }) + '</td>' +
-      '<td class="col-email">' + textCellHTML({ type:'email', field:'contactEmail', value:r.contactEmail, placeholder:'담당자 이메일' }) + '</td>' +
       (admin ? '<td class="center">' + folderLinkHTML(r) + '</td>' : '') +
       '<td class="center">' + (admin ? '<button type="button" class="delete-btn" data-action="delete" data-ui-icon="trash" title="삭제 (몇 초 동안 되돌릴 수 있어요)">삭제</button>' : '') + '</td>' +
     '</tr>';
@@ -279,8 +276,7 @@
     var items = uploadItemsForRow(r);
     var uploadComplete = items.every(function(it){ return it.checked; });
     return '' +
-    '<tr data-id="' + r.id + '">' +
-      '<td class="col-date" data-label="협약일자"><span class="readonly-text">' + escapeHtml(r.date || '') + '</span></td>' +
+    '<tr data-id="' + escapeHtml(r.id) + '">' +
       '<td data-label="폴더NC"><span class="readonly-text">' + escapeHtml(r.folderNc || '') + '</span></td>' +
       '<td data-label="권역"><span class="readonly-text">' + escapeHtml(r.region || '') + '</span></td>' +
       '<td class="sticky-col company-cell"><span class="readonly-text" title="' + escapeHtml(r.company || '') + '">' + escapeHtml(r.company || '') + '</span></td>' +
@@ -449,6 +445,17 @@
   // ExcelJS는 꽤 무거운 라이브러리라서, 페이지를 열 때마다 미리 받아두지 않고 "엑셀로
   // 내보내기" 버튼을 실제로 눌렀을 때만 그때그때 불러와요 (그래야 대시보드 첫 로딩이
   // 느려지지 않아요). 한 번 불러온 뒤에는 다시 내려받지 않도록 캐시해둬요.
+  // 만든 엑셀(workbook)을 파일로 내려받아요. 취합현황·업로드현황·보고서 내보내기가 같이 써요.
+  function downloadWorkbook(workbook, filename){
+    return workbook.xlsx.writeBuffer().then(function(buffer){
+      var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    });
+  }
   var exceljsLoadPromise = null;
   function ensureExcelJSLoaded(){
     if(typeof ExcelJS !== 'undefined') return Promise.resolve();
@@ -484,14 +491,7 @@
       var datePart = new Date().toISOString().slice(0,10).replace(/-/g, '');
       var filename = sheetLabel + '_' + regionPart + '_' + roundPart + '_' + datePart + '.xlsx';
 
-      return workbook.xlsx.writeBuffer().then(function(buffer){
-        var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-      });
+      return downloadWorkbook(workbook, filename);
     }).catch(function(err){
       console.error('[엑셀 내보내기] 실패:', err);
       uiToast(err && err.message ? err.message : '엑셀 파일을 만드는 중 문제가 생겼어요.', { type:'error' });
@@ -546,14 +546,7 @@
       var datePart = new Date().toISOString().slice(0,10).replace(/-/g, '');
       var filename = '보고서_' + datePart + '.xlsx';
 
-      return workbook.xlsx.writeBuffer().then(function(buffer){
-        var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-      });
+      return downloadWorkbook(workbook, filename);
     }).catch(function(err){
       console.error('[보고서 내보내기] 실패:', err);
       uiToast(err && err.message ? err.message : '엑셀 파일을 만드는 중 문제가 생겼어요.', { type:'error' });
@@ -633,7 +626,8 @@
     }
 
     var filtered = sortRows(visibleRows());
-    var colCount = viewMode === 'upload' ? (7 + STATE.sessionCount) : (12 + STATE.sessionCount + (isAdmin() ? 1 : 0));
+    // 협약일자·담당자 이메일 열은 화면에 그리지 않아요(데이터와 엑셀 내보내기에는 그대로 있어요).
+    var colCount = viewMode === 'upload' ? (6 + STATE.sessionCount) : (10 + STATE.sessionCount + (isAdmin() ? 1 : 0));
     if(filtered.length === 0){
       var noRows = STATE.rows.length === 0;
       rowsBody.innerHTML = '<tr class="empty-row"><td colspan="' + colCount + '">' +
