@@ -19,15 +19,28 @@
       '<div class="severity-seg issue" style="width:' + (s.issueCount / meterTotal * 100) + '%"></div>' +
     '</div>';
 
+    // 카드 머리(라벨+아이콘) · 숫자 · 보조 설명 순서로 통일해요 (shadcn Card 구성).
+    function statHead(label, icon){
+      return '<div class="stat-head"><div class="stat-label">' + label + '</div><span class="stat-icon" data-ui-icon="' + icon + '" aria-hidden="true"></span></div>';
+    }
     statsGrid.innerHTML =
-      '<div class="stat-card"><div class="stat-label">전체 멘티기업</div><div class="stat-value">' + s.total + '<span class="stat-unit">개사</span></div></div>' +
-      '<div class="stat-card"><div class="stat-label">완료</div><div class="stat-value">' + s.completeCount + '<span class="stat-unit">/ ' + s.total + '</span></div>' +
-        '<div class="progress"><div class="progress-bar" style="width:' + s.completeRate + '%"></div></div></div>' +
-      '<div class="stat-card"><div class="stat-label">회차 진행률</div><div class="stat-value">' + s.sessionRate + '<span class="stat-unit">%</span></div>' +
-        '<div class="progress"><div class="progress-bar success" style="width:' + s.sessionRate + '%"></div></div></div>' +
-      '<div class="stat-card"><div class="stat-label">서류 제출</div><div class="stat-value">' + s.planCount + '<span class="stat-unit">수행계획서</span></div>' +
-        '<div class="stat-value small">' + s.reportCount + '<span class="stat-unit">결과보고서</span></div></div>' +
-      '<div class="stat-card"><div class="stat-label">이슈 표시</div><div class="stat-value">' + s.issueCount + '<span class="stat-unit">문제</span></div>' +
+      '<div class="stat-card">' + statHead('전체 멘티기업', 'building') +
+        '<div class="stat-value">' + s.total + '<span class="stat-unit">개사</span></div>' +
+        '<div class="stat-foot">권역 ' + regionEntries.length + '곳 · 지금 선택한 권역·Step 기준</div></div>' +
+      '<div class="stat-card">' + statHead('완료', 'circle-check') +
+        '<div class="stat-value">' + s.completeCount + '<span class="stat-unit">/ ' + s.total + '</span></div>' +
+        '<div class="progress"><div class="progress-bar" style="width:' + s.completeRate + '%"></div></div>' +
+        '<div class="stat-foot">완료율 ' + s.completeRate + '%</div></div>' +
+      '<div class="stat-card">' + statHead('회차 진행률', 'trending') +
+        '<div class="stat-value">' + s.sessionRate + '<span class="stat-unit">%</span></div>' +
+        '<div class="progress"><div class="progress-bar success" style="width:' + s.sessionRate + '%"></div></div>' +
+        '<div class="stat-foot">' + STATE.sessionCount + '회차 체크 기준</div></div>' +
+      '<div class="stat-card">' + statHead('서류 제출', 'file') +
+        '<div class="stat-value">' + s.planCount + '<span class="stat-unit">수행계획서</span></div>' +
+        '<div class="stat-value small">' + s.reportCount + '<span class="stat-unit">결과보고서</span></div>' +
+        '<div class="stat-foot">전체 ' + s.total + '개사 중</div></div>' +
+      '<div class="stat-card' + (s.issueCount ? ' has-issue' : '') + '">' + statHead('이슈 표시', 'alert') +
+        '<div class="stat-value">' + s.issueCount + '<span class="stat-unit">문제</span></div>' +
         '<div class="stat-value small">' + s.alertCount + '<span class="stat-unit">경고</span> · ' + s.cautionCount + '<span class="stat-unit">주의</span></div>' + severityMeter + '</div>';
     // 권역별 기업 수는 아래 "권역별 평균 수행도" 그래프에 같이 보여줘요.
   }
@@ -49,20 +62,25 @@
       ? roundKeys.map(function(k){
           var stepNum = String(k).replace(/[^0-9]/g, '');
           var label = stepNum ? 'Step ' + stepNum : k;
-          return '<li class="side-item"><span>' + escapeHtml(label) + '</span><span class="chip">' + roundCounts[k] + '개사</span></li>';
+          return '<li class="side-item"><span class="side-item-label"><span class="side-item-icon" data-ui-icon="layers" aria-hidden="true"></span>' + escapeHtml(label) + '</span><span class="chip">' + roundCounts[k] + '개사</span></li>';
         }).join('')
       : '<li class="side-item"><span>데이터 없음</span></li>';
 
+    function actionItem(icon, label, count){
+      return '<li class="side-item"><span class="side-item-label"><span class="side-item-icon" data-ui-icon="' + icon + '" aria-hidden="true"></span>' + label + '</span>' +
+        '<span class="chip' + (count ? ' is-attention' : ' muted') + '">' + count + '건</span></li>';
+    }
+
     quickPanelsEl.innerHTML =
       '<div class="mini-card">' +
-        '<h3>즉시 처리 필요</h3>' +
+        '<div class="mini-head"><h3>즉시 처리 필요</h3><p class="mini-desc">지금 확인이 필요한 기업 수예요</p></div>' +
         '<ul class="side-list">' +
-          '<li class="side-item"><span>지연 표시 기업(경고·문제)</span><span class="chip' + (delayed ? '' : ' muted') + '">' + delayed + '건</span></li>' +
-          '<li class="side-item"><span>수행계획서·결과보고서 미제출</span><span class="chip' + (missingDocs ? '' : ' muted') + '">' + missingDocs + '건</span></li>' +
+          actionItem('alert', '지연 표시 기업(경고·문제)', delayed) +
+          actionItem('file', '수행계획서·결과보고서 미제출', missingDocs) +
         '</ul>' +
       '</div>' +
       '<div class="mini-card">' +
-        '<h3>회차별 참여 현황</h3>' +
+        '<div class="mini-head"><h3>회차별 참여 현황</h3><p class="mini-desc">Step별 참여 기업 수</p></div>' +
         '<ul class="side-list">' + roundItems + '</ul>' +
       '</div>';
   }
@@ -72,16 +90,24 @@
   // 제출·이슈 건수를 계산) 그룹별로 한 번씩 돌리기만 하면 돼요 — 새 집계 로직 불필요.
   function comparisonRowHTML(label, rows){
     var s = computeStats(rows);
-    return '<tr>' +
-      '<td>' + escapeHtml(label) + '</td>' +
-      '<td>' + s.total + '개사</td>' +
-      '<td>' + s.completeRate + '%</td>' +
-      '<td>' + s.sessionRate + '%</td>' +
+    // 비율은 숫자 옆에 작은 막대로, 이슈 건수는 0이 아닐 때만 색 배지로 보여줘요.
+    function rate(p, tone){
+      return '<div class="ui-rate"><span class="ui-rate-value">' + p + '%</span>' +
+        '<span class="ui-rate-track"><span class="ui-rate-bar' + (tone ? ' ' + tone : '') + '" style="width:' + p + '%"></span></span></div>';
+    }
+    function count(n, tone){
+      return '<span class="ui-count' + (n ? ' ' + tone : '') + '">' + n + '</span>';
+    }
+    return '<tr' + (s.total ? '' : ' class="is-empty-group"') + '>' +
+      '<td class="ui-cell-strong">' + escapeHtml(label) + '</td>' +
+      '<td>' + s.total + '<span class="ui-cell-unit">개사</span></td>' +
+      '<td>' + rate(s.completeRate) + '</td>' +
+      '<td>' + rate(s.sessionRate, 'success') + '</td>' +
       '<td>' + s.planCount + '</td>' +
       '<td>' + s.reportCount + '</td>' +
-      '<td>' + s.issueCount + '</td>' +
-      '<td>' + s.alertCount + '</td>' +
-      '<td>' + s.cautionCount + '</td>' +
+      '<td>' + count(s.issueCount, 'is-issue') + '</td>' +
+      '<td>' + count(s.alertCount, 'is-alert') + '</td>' +
+      '<td>' + count(s.cautionCount, 'is-caution') + '</td>' +
     '</tr>';
   }
 

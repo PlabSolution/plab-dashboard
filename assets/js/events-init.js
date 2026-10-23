@@ -59,7 +59,7 @@
     var html = '<div class="naming-rules">' +
       '<div><strong>기업 폴더 이름</strong> <code>' + escapeHtml(rules.folder || '번호_권역_기업명') + '</code></div>' +
       '<div><strong>파일 이름</strong> ' + escapeHtml(rules.files || '') + '</div>' +
-      '<div style="color:var(--muted);">드라이브에서 이름을 고친 뒤 "드라이브에서 불러오기"(폴더) 또는 "취합현황 업데이트"(파일)를 다시 누르면 목록이 갱신돼요.</div>' +
+      '<div class="naming-rules-hint">드라이브에서 이름을 고친 뒤 "드라이브에서 불러오기"(폴더) 또는 "취합현황 업데이트"(파일)를 다시 누르면 목록이 갱신돼요.</div>' +
       '</div>';
 
     var folders = ni.folders || [];
