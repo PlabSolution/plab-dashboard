@@ -62,3 +62,17 @@ input:focus, select:focus, .login-input:focus { outline: 2px solid rgba(59, 91, 
 .chip { border-radius: 999px; font-weight: 600; }
 .progress, .mini-gauge-track { background: #eceef6; }
 .progress-bar, .mini-gauge-bar { background: var(--primary); }
+
+/* ---- 취합현황 · 자료제출 표 모양 맞추기 ---- */
+/* 1) 머리글을 체크칸과 같은 가운데 정렬로 (기존엔 머리글만 왼쪽에 붙어 어긋났음) */
+thead th.col-session, thead th.col-doc, thead th.col-progress,
+thead th.col-complete, thead th.col-flag, thead th.col-drive-link { text-align: center; }
+
+/* 2) 두 탭의 행 높이를 같게 (자료제출은 체크 날짜가 붙을 때만 높아지던 문제) */
+tbody td { height: 56px; }
+.upload-check-date { margin-top: 1px; line-height: 1.2; }
+
+/* 3) 자료제출은 열이 적어서 화면 너비만큼 늘어났음 → 취합현황과 같은 열 폭으로 */
+@media (min-width: 1101px) {
+  #main-table.upload-view { width: auto; min-width: 0; }
+}
