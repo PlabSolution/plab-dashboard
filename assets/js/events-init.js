@@ -97,6 +97,56 @@
     body.innerHTML = html;
   }
 
+  // ── 비밀번호 재설정 창 ────────────────────────────────────────────────
+  // 예전엔 브라우저 prompt()라 입력한 비밀번호가 화면에 그대로 보였어요. index.html의
+  // <dialog id="pw-reset-dialog">로 받아서 가려진 칸 + 확인 입력으로 바꿨어요.
+  // 확인을 누르면 새 비밀번호를, 취소·닫기면 null을 돌려줘요(prompt와 같은 약속).
+  function askNewPassword(username){
+    var dialog = document.getElementById('pw-reset-dialog');
+    if(!dialog || typeof dialog.showModal !== 'function'){
+      // <dialog>를 못 쓰는 아주 오래된 브라우저용 예비 경로
+      var fallback = prompt(username + ' 계정의 새 비밀번호를 입력해주세요(6자 이상).');
+      if(fallback === null) return Promise.resolve(null);
+      if(fallback.length < 6){ alert('비밀번호는 6자 이상이어야 해요.'); return Promise.resolve(null); }
+      return Promise.resolve(fallback);
+    }
+    var form = document.getElementById('pw-reset-form');
+    var input = document.getElementById('pw-reset-input');
+    var confirmInput = document.getElementById('pw-reset-confirm');
+    var errorEl = document.getElementById('pw-reset-error');
+    var cancelBtn = document.getElementById('pw-reset-cancel');
+    var toggleBtn = dialog.querySelector('[data-toggle-password]');
+    document.getElementById('pw-reset-description').textContent = username + ' 계정에 새로 쓸 비밀번호를 입력하세요.';
+    input.value = ''; confirmInput.value = ''; input.type = 'password';
+    if(toggleBtn){ toggleBtn.textContent = '표시'; toggleBtn.setAttribute('aria-pressed', 'false'); }
+    errorEl.hidden = true;
+
+    return new Promise(function(resolve){
+      function showError(msg){ errorEl.textContent = msg; errorEl.hidden = false; }
+      function finish(value){
+        form.removeEventListener('submit', onSubmit);
+        cancelBtn.removeEventListener('click', onCancel);
+        dialog.removeEventListener('cancel', onCancel);
+        input.value = ''; confirmInput.value = '';
+        if(dialog.open) dialog.close();
+        resolve(value);
+      }
+      function onSubmit(e){
+        e.preventDefault();
+        var pw = input.value;
+        if(pw.length < 6){ showError('비밀번호는 6자 이상이어야 해요.'); input.focus(); return; }
+        if(pw !== confirmInput.value){ showError('두 칸에 입력한 비밀번호가 달라요.'); confirmInput.focus(); return; }
+        finish(pw);
+      }
+      function onCancel(e){ if(e) e.preventDefault(); finish(null); }
+      form.addEventListener('submit', onSubmit);
+      cancelBtn.addEventListener('click', onCancel);
+      dialog.addEventListener('cancel', onCancel); // Esc 키
+      dialog.showModal();
+      input.focus();
+    });
+  }
+
   function continuingSuffix(r){
     return (r && r.continuing) ? ' · ⏳ 남은 부분은 1분 뒤부터 자동으로 이어서 처리돼요' : '';
   }
@@ -474,17 +524,17 @@
         var resetBtn = e.target.closest('.user-reset-pw-btn');
         if(resetBtn){
           var username2 = resetBtn.getAttribute('data-username');
-          var newPw = prompt(username2 + ' 계정의 새 비밀번호를 입력해주세요(6자 이상).');
-          if(newPw === null) return;
-          if(newPw.length < 6){ alert('비밀번호는 6자 이상이어야 해요.'); return; }
-          resetBtn.disabled = true;
-          apiPost('resetUserPassword', { username:username2, password:newPw })
-            .then(function(data){
-              if(!data || data.ok === false){ alert((data && data.message) || '재설정에 실패했어요.'); return; }
-              alert('비밀번호를 재설정했어요.');
-            })
-            .catch(function(err){ console.error('[사용자 권한] 재설정 실패:', err); alert('재설정 중 문제가 생겼어요.'); })
-            .finally(function(){ resetBtn.disabled = false; });
+          askNewPassword(username2).then(function(newPw){
+            if(newPw === null) return;
+            resetBtn.disabled = true;
+            apiPost('resetUserPassword', { username:username2, password:newPw })
+              .then(function(data){
+                if(!data || data.ok === false){ alert((data && data.message) || '재설정에 실패했어요.'); return; }
+                alert('비밀번호를 재설정했어요.');
+              })
+              .catch(function(err){ console.error('[사용자 권한] 재설정 실패:', err); alert('재설정 중 문제가 생겼어요.'); })
+              .finally(function(){ resetBtn.disabled = false; });
+          });
           return;
         }
         var delBtn = e.target.closest('.user-delete-btn');

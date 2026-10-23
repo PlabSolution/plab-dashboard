@@ -217,9 +217,15 @@
     if(!isAdmin()) return;
     var row = findRow(id);
     if(!row) return;
+    // 업로드 체크일(…At)은 체크 전용 요청(setUpload)이 서버에서 기록해요. 행 저장에는 싣지 않아서
+    // 화면에 들고 있던 값이 서버 값을 덮어쓰지 않게 해요(값이 없으면 서버는 기존 칸을 그대로 둬요).
+    var payloadRow = {};
+    Object.keys(row).forEach(function(k){
+      if(!/^up(Session\d+|Plan|Report)At$/.test(k)) payloadRow[k] = row[k];
+    });
     inFlight++;
     setSyncStatus('syncing');
-    apiPost('upsert', { row: row })
+    apiPost('upsert', { row: payloadRow })
       .catch(function(err){ console.error(err); })
       .finally(function(){
         inFlight--;

@@ -11,9 +11,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/styles.css">
-<link rel="stylesheet" href="assets/plab-ops-theme.css">
-<link rel="stylesheet" href="assets/ui.css">
+<link rel="stylesheet" href="assets/styles.css?v=20261023-2">
+<link rel="stylesheet" href="assets/plab-ops-theme.css?v=20261023-2">
+<link rel="stylesheet" href="assets/ui.css?v=20261023-2">
 </head>
 <body class="ui">
 
@@ -407,7 +407,10 @@
             </div>
             <div class="ui-field">
               <label class="ui-label" for="new-user-password-input">초기 비밀번호</label>
-              <input class="compose-input" id="new-user-password-input" type="text" autocomplete="off">
+              <div class="ui-input-group">
+                <input class="compose-input" id="new-user-password-input" type="password" autocomplete="new-password" minlength="6">
+                <button class="ui-input-addon" type="button" data-toggle-password="new-user-password-input" aria-pressed="false" aria-label="초기 비밀번호 표시">표시</button>
+              </div>
             </div>
             <div class="ui-field">
               <label class="ui-label" for="new-user-role-input">권한</label>
@@ -433,6 +436,33 @@
 
 <datalist id="region-list"></datalist>
 
+<!-- ───────── 비밀번호 재설정 (브라우저 prompt 대신 — 입력값이 화면에 보이지 않게) ───────── -->
+<dialog class="ui-dialog" id="pw-reset-dialog" aria-labelledby="pw-reset-title">
+  <form class="ui-dialog-body" id="pw-reset-form" method="dialog" novalidate>
+    <div class="ui-dialog-header">
+      <h3 class="ui-dialog-title" id="pw-reset-title">비밀번호 재설정</h3>
+      <p class="ui-dialog-description" id="pw-reset-description"></p>
+    </div>
+    <div class="ui-field">
+      <label class="ui-label" for="pw-reset-input">새 비밀번호</label>
+      <div class="ui-input-group">
+        <input class="compose-input" id="pw-reset-input" type="password" autocomplete="new-password" minlength="6">
+        <button class="ui-input-addon" type="button" data-toggle-password="pw-reset-input" aria-pressed="false" aria-label="새 비밀번호 표시">표시</button>
+      </div>
+      <span class="ui-field-hint">6자 이상</span>
+    </div>
+    <div class="ui-field">
+      <label class="ui-label" for="pw-reset-confirm">새 비밀번호 확인</label>
+      <input class="compose-input" id="pw-reset-confirm" type="password" autocomplete="new-password">
+    </div>
+    <p class="ui-dialog-error" id="pw-reset-error" role="alert" hidden></p>
+    <div class="ui-dialog-footer">
+      <button class="btn btn-ghost" type="button" id="pw-reset-cancel">취소</button>
+      <button class="btn btn-primary" type="submit" id="pw-reset-submit">재설정</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
   // 모바일: 사이드바에서 메뉴를 고르면 사이드바를 닫음 (기존 JS와 무관한 UI 동작만)
   document.addEventListener('click', function (e) {
@@ -440,14 +470,25 @@
       var t = document.getElementById('ui-nav-toggle');
       if (t) t.checked = false;
     }
+    // 비밀번호 칸 옆 "표시/숨기기" 버튼
+    var pwToggle = e.target.closest && e.target.closest('[data-toggle-password]');
+    if (pwToggle) {
+      var input = document.getElementById(pwToggle.getAttribute('data-toggle-password'));
+      if (!input) return;
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      pwToggle.textContent = show ? '숨기기' : '표시';
+      pwToggle.setAttribute('aria-pressed', String(show));
+    }
   });
 </script>
-<script src="assets/js/state.js"></script>
-<script src="assets/js/table-view.js"></script>
-<script src="assets/js/dashboard-sessions-nav.js"></script>
-<script src="assets/js/charts.js"></script>
-<script src="assets/js/admin-pages.js"></script>
-<script src="assets/js/api.js"></script>
-<script src="assets/js/events-init.js"></script>
+<!-- ?v= 값은 배포할 때마다 올려 주세요. 브라우저·GitHub Pages가 예전 파일을 캐시에서 꺼내 쓰는 것을 막아요. -->
+<script src="assets/js/state.js?v=20261023-2"></script>
+<script src="assets/js/table-view.js?v=20261023-2"></script>
+<script src="assets/js/dashboard-sessions-nav.js?v=20261023-2"></script>
+<script src="assets/js/charts.js?v=20261023-2"></script>
+<script src="assets/js/admin-pages.js?v=20261023-2"></script>
+<script src="assets/js/api.js?v=20261023-2"></script>
+<script src="assets/js/events-init.js?v=20261023-2"></script>
 </body>
 </html>
