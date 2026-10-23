@@ -193,7 +193,7 @@
     var admin = isAdmin();
     return '' +
     '<tr data-id="' + r.id + '" class="flag-' + r.flag + '">' +
-      '<td>' + textCellHTML({ type:'date', field:'date', value:r.date }) + '</td>' +
+      '<td class="col-date">' + textCellHTML({ type:'date', field:'date', value:r.date }) + '</td>' +
       '<td>' + textCellHTML({ type:'text', field:'folderNc', value:r.folderNc, extraClass:'cell-narrow', inputmode:'numeric' }) + '</td>' +
       '<td>' + textCellHTML({ type:'text', field:'region', value:r.region, placeholder:'권역', list:'region-list' }) + '</td>' +
       '<td class="sticky-col company-cell">' +
@@ -206,8 +206,8 @@
       '<td class="center">' + gaugeHTML(r) + '</td>' +
       '<td class="center">' + autoCellHTML(r.complete, true) + '</td>' +
       '<td class="center">' + flagCellHTML(r) + '</td>' +
-      '<td>' + textCellHTML({ type:'text', field:'remark', value:r.remark, placeholder: r.date ? '메모' : '협약일자 설정X' }) + '</td>' +
-      '<td>' + textCellHTML({ type:'email', field:'contactEmail', value:r.contactEmail, placeholder:'담당자 이메일' }) + '</td>' +
+      '<td>' + textCellHTML({ type:'text', field:'remark', value:r.remark, placeholder: '메모' }) + '</td>' +
+      '<td class="col-email">' + textCellHTML({ type:'email', field:'contactEmail', value:r.contactEmail, placeholder:'담당자 이메일' }) + '</td>' +
       (admin ? '<td class="center">' + folderLinkHTML(r) + '</td>' : '') +
       '<td class="center">' + (admin ? '<button type="button" class="delete-btn" data-action="delete">삭제</button>' : '') + '</td>' +
     '</tr>';
@@ -250,7 +250,7 @@
     var uploadComplete = items.every(function(it){ return it.checked; });
     return '' +
     '<tr data-id="' + r.id + '">' +
-      '<td data-label="협약일자"><span class="readonly-text">' + escapeHtml(r.date || '') + '</span></td>' +
+      '<td class="col-date" data-label="협약일자"><span class="readonly-text">' + escapeHtml(r.date || '') + '</span></td>' +
       '<td data-label="폴더NC"><span class="readonly-text">' + escapeHtml(r.folderNc || '') + '</span></td>' +
       '<td data-label="권역"><span class="readonly-text">' + escapeHtml(r.region || '') + '</span></td>' +
       '<td class="sticky-col company-cell"><span class="readonly-text" title="' + escapeHtml(r.company || '') + '">' + escapeHtml(r.company || '') + '</span></td>' +
@@ -730,7 +730,7 @@
         if(flagBadge.tagName !== 'SELECT') flagBadge.textContent = FLAG_LABELS[row.flag] || '정상';
       }
       var remarkInput = tr.querySelector('[data-field="remark"]');
-      if(remarkInput) remarkInput.placeholder = row.date ? '메모' : '협약일자 설정X';
+      if(remarkInput) remarkInput.placeholder = '메모';
       renderStats();
     }
     if(field === 'flagOverride'){

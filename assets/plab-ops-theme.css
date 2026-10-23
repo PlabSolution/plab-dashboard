@@ -76,3 +76,6 @@ tbody td { height: 56px; }
 @media (min-width: 1101px) {
   #main-table.upload-view { width: auto; min-width: 0; }
 }
+
+/* ---- 협약일자·담당자 이메일 열 숨김 (데이터와 엑셀 내보내기는 그대로, 화면에서만 감춤) ---- */
+th.col-date, td.col-date, th.col-email, td.col-email { display: none; }

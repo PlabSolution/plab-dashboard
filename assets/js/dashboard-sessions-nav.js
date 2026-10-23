@@ -59,8 +59,6 @@
         '<ul class="side-list">' +
           '<li class="side-item"><span>지연 표시 기업(경고·문제)</span><span class="chip' + (delayed ? '' : ' muted') + '">' + delayed + '건</span></li>' +
           '<li class="side-item"><span>수행계획서·결과보고서 미제출</span><span class="chip' + (missingDocs ? '' : ' muted') + '">' + missingDocs + '건</span></li>' +
-          '<li class="side-item"><span>협약일자 미설정</span><span class="chip' + (missingDate ? '' : ' muted') + '">' + missingDate + '건</span></li>' +
-          '<li class="side-item"><span>담당자 이메일 미등록</span><span class="chip' + (missingEmail ? '' : ' muted') + '">' + missingEmail + '건</span></li>' +
         '</ul>' +
       '</div>' +
       '<div class="mini-card">' +
